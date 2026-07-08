@@ -1,0 +1,4 @@
+build/
+project/bin/*.so
+project/bin/*.dll
+project/.godot/
