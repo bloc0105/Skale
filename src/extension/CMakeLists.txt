@@ -3,17 +3,26 @@ set(SOURCES
     register_types.cpp
     skale_hello.h
     skale_hello.cpp
+    physics/skale_simulation.h
+    physics/skale_simulation.cpp
+    physics/skale_body.h
+    physics/skale_body.cpp
 )
 
 add_library(skale SHARED ${SOURCES})
 
 set_property(TARGET skale PROPERTY CXX_STANDARD 17)
 
-target_include_directories(skale PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(skale PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
+)
 
-target_link_libraries(skale PRIVATE godot::cpp)
+target_link_libraries(skale PRIVATE
+    godot::cpp
+    skale_core
+)
 
-# Copy compiled library into the Godot project bin/ after each build
 add_custom_command(TARGET skale POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         $<TARGET_FILE:skale>
