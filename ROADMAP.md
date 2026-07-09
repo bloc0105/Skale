@@ -7,36 +7,36 @@ Development is organized into sequential phases, each with a clear deliverable. 
 ## Phase 0 — Development Environment
 **Deliverable:** CMake builds cleanly, Godot launches, all dependencies are confirmed present.
 
-- [ ] Install CMake, Ninja, build-essential
-- [ ] Install OpenCASCADE dev packages (apt)
-- [ ] Build Project Chrono from source (no apt package exists)
-- [ ] Download Godot 4 binary
-- [ ] Initialize git repository
-- [ ] Add `godot-cpp` as a git submodule
-- [ ] Write top-level CMakeLists.txt skeleton
-- [ ] Confirm clean build on Linux
+- [x] Install CMake, Ninja, build-essential
+- [x] Install OpenCASCADE dev packages (apt)
+- [x] Build Project Chrono from source (no apt package exists)
+- [x] Download Godot 4 binary
+- [x] Initialize git repository
+- [x] Add `godot-cpp` as a git submodule
+- [x] Write top-level CMakeLists.txt skeleton
+- [x] Confirm clean build on Linux
 
 ---
 
 ## Phase 1 — GDExtension Hello World
 **Deliverable:** GDScript calls a C++ function and gets a result back.
 
-- [ ] Minimal GDExtension: one C++ class with one method
-- [ ] CMake compiles extension to `.so` (Linux) and `.dll` (Windows)
-- [ ] Godot loads the extension at startup
-- [ ] GDScript instantiates the class and calls the method
-- [ ] Establish the exact Godot version ↔ godot-cpp version lock
+- [x] Minimal GDExtension: one C++ class with one method
+- [x] CMake compiles extension to `.so` (Linux) and `.dll` (Windows)
+- [x] Godot loads the extension at startup
+- [x] GDScript instantiates the class and calls the method
+- [x] Establish the exact Godot version ↔ godot-cpp version lock (Godot 4.6.2 / godot-cpp 4.5-stable)
 
 ---
 
 ## Phase 2 — Chrono Physics in Godot
 **Deliverable:** A box falls under gravity and bounces off a floor, rendered in Godot's viewport.
 
-- [ ] Chrono linked into the GDExtension
-- [ ] `ChSystem` stepping inside Godot's `_physics_process` (fixed timestep)
-- [ ] Rigid body transforms synced to `MeshInstance3D` nodes each frame
-- [ ] Box + static floor scene demonstrating live simulation
-- [ ] Confirm simulation stability (no drift or explosion at default timestep)
+- [x] Chrono linked into the GDExtension (two-layer: skale_core + skale)
+- [x] `ChSystem` stepping via `step(dt)` / `_process` override
+- [x] Rigid body transforms synced to Node3D each frame via `sync_transform()`
+- [x] Box + static floor: falls from y=5, rests correctly at y=0.35
+- [x] Confirm simulation stability — no drift or explosion at 60Hz timestep
 
 ---
 
