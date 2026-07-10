@@ -105,18 +105,29 @@ ls /usr/local/lib/cmake/Chrono/        # should contain chrono-config.cmake
 
 ---
 
-## Step 3 — Clone Skale
+## Step 3 — Get the Skale Source
 
+**Fresh clone:**
 ```bash
 git clone --recurse-submodules https://github.com/your-org/Skale.git
 cd Skale
 ```
 
-The `--recurse-submodules` flag is important — it fetches `godot-cpp` automatically. If you forgot it:
-
+**Already have the repo (pull + sync submodules):**
 ```bash
+cd Skale
+git pull
 git submodule update --init --recursive
 ```
+
+> **Important:** `git submodule update` without `--init --recursive` will silently do nothing if the submodule was never initialized. Always use `--init --recursive`.
+
+Verify the submodule is populated before continuing:
+```bash
+ls thirdparty/godot-cpp/include/   # should show godot_cpp/ directory
+```
+
+If that directory is empty, the build will fail. Re-run `git submodule update --init --recursive`.
 
 ---
 
@@ -149,8 +160,16 @@ ls ../project/bin/libskale.so   # should exist and be ~13MB
 
 ## Step 5 — Run the Physics Test
 
-From the repo root (not the `build/` directory):
+**Before running, verify the build output is in place:**
+```bash
+ls project/bin/libskale.so          # must exist
+ldd project/bin/libskale.so         # all deps must show a path, none "not found"
+```
 
+If `libskale.so` is missing, the build failed — check ninja output for errors.  
+If any `ldd` entry shows `not found`, a runtime library is missing (most likely `libChronoEngine.so` — check that Chrono was installed with `sudo ninja install`).
+
+**Run from the repo root (not the `build/` directory):**
 ```bash
 /path/to/godot --headless --path project --script res://scripts/test.gd -v
 ```
