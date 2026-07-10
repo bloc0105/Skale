@@ -158,7 +158,22 @@ ls ../project/bin/libskale.so   # should exist and be ~13MB
 
 ---
 
-## Step 5 — Run the Physics Test
+## Step 5 — Initialize the Godot Project
+
+Godot tracks which extensions to load in `project/.godot/extension_list.cfg`. This file is created the first time you open the project — it is not in the repo because Godot manages it.
+
+**With a display (normal desktop):** Open the Godot editor, click "Import Project", navigate to the `project/` folder, and open it. You can close the editor immediately after it loads.
+
+**Headless / no display:** Run the project import once:
+```bash
+/path/to/godot --headless --import --path project
+```
+
+You only need to do this once per clone. After that, the `.godot/` cache persists and headless runs work without the editor.
+
+---
+
+## Step 6 — Run the Physics Test
 
 **Before running, verify the build output is in place:**
 ```bash
@@ -195,7 +210,7 @@ Replace `/path/to/godot` with your actual Godot binary path (e.g. `~/bin/godot`)
 
 The box starts at y=5, falls under gravity, hits the floor (~t=1s), bounces once, and comes to rest at y=0.35. That rest position is deterministic: floor top (y=0.1) + box half-height (0.25) = 0.35.
 
-> **Note on the `-v` flag:** This verbose flag is required on first run because Godot needs to scan the project and discover the GDExtension. After the first successful run, the `.godot/` cache is populated and `-v` is optional.
+> **Note on the `-v` flag:** Recommended but optional.
 
 ---
 
@@ -210,7 +225,8 @@ Godot looks for the library at `project/bin/libskale.so`. The CMake post-build s
 The extension isn't loading. Check:
 1. Does `project/bin/libskale.so` exist?
 2. Does `project/skale.gdextension` point to the right path (`res://bin/libskale.so`)?
-3. Run with `-v` for verbose output — Godot will print extension load errors.
+3. Does `project/.godot/extension_list.cfg` exist? This file is created by Godot the first time you open the project. If it's missing, you skipped Step 5 — open the project in the Godot editor once, or run `godot --headless --import --path project`.
+4. Run with `-v` for verbose output — Godot will print extension load errors.
 
 ### `relocation R_X86_64_PC32 ... recompile with -fPIC`
 
