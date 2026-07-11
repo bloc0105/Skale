@@ -7,6 +7,8 @@ set(SOURCES
     physics/skale_simulation.cpp
     physics/skale_body.h
     physics/skale_body.cpp
+    physics/skale_hinge.h
+    physics/skale_hinge.cpp
 )
 
 add_library(skale SHARED ${SOURCES})

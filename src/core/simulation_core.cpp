@@ -2,6 +2,7 @@
 
 #include <chrono/physics/ChSystemNSC.h>
 #include <chrono/physics/ChBody.h>
+#include <chrono/physics/ChLink.h>
 #include <chrono/collision/ChCollisionSystem.h>
 
 namespace skale {
@@ -33,6 +34,11 @@ void SimulationCore::step(double dt) {
 void SimulationCore::add_body(std::shared_ptr<void> handle) {
     auto body = std::static_pointer_cast<chrono::ChBody>(handle);
     m_impl->system.AddBody(body);
+}
+
+void SimulationCore::add_link(std::shared_ptr<void> handle) {
+    auto link = std::static_pointer_cast<chrono::ChLink>(handle);
+    m_impl->system.AddLink(link);
 }
 
 } // namespace skale

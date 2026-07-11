@@ -77,6 +77,10 @@ void SkaleBody::sync_transform() {
     set_quaternion(Quaternion(rot.x, rot.y, rot.z, rot.w));
 }
 
+std::shared_ptr<void> SkaleBody::get_body_handle() const {
+    return m_core->get_chrono_body();
+}
+
 // --- Backward compat ---
 
 void SkaleBody::initialize_box(SkaleSimulation *sim, Vector3 size, double density, bool fixed) {

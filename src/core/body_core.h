@@ -18,6 +18,9 @@ public:
     // Read the current simulated transform.
     void get_transform(Vec3 &pos, Quat &rot) const;
 
+    // Type-erased handle to the underlying ChBody — used by JointCore.
+    std::shared_ptr<void> get_chrono_body() const;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> m_impl;

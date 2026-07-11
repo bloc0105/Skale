@@ -25,8 +25,15 @@ var _prop_restitution: SpinBox
 
 # ── Selection ────────────────────────────────────────────────────────────────
 var _selected: SkaleBody = null
-var _body_counter := 0
+var _body_counter  := 0
+var _joint_counter := 0
 var _updating_props := false   # guard against feedback loops
+
+# ── Joint creation state ──────────────────────────────────────────────────────
+enum JointMode { NONE, SELECTING_A, SELECTING_B }
+var _joint_mode   := JointMode.NONE
+var _joint_body_a: SkaleBody = null
+var _status_label: Label
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 const COLOR_DYNAMIC  := Color(0.30, 0.55, 1.00)
@@ -175,6 +182,16 @@ func _build_toolbar(root: Control) -> void:
 	btn_box.pressed.connect(_on_add_box)
 	hbox.add_child(btn_box)
 
+	var btn_hinge := Button.new()
+	btn_hinge.text = "+ Hinge"
+	btn_hinge.pressed.connect(_on_add_hinge)
+	hbox.add_child(btn_hinge)
+
+	_status_label = Label.new()
+	_status_label.text = ""
+	_status_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
+	hbox.add_child(_status_label)
+
 	hbox.add_child(VSeparator.new())
 
 	# Playback
@@ -272,7 +289,25 @@ func _add_spinbox(parent: Control, label_text: String, min_v: float, max_v: floa
 # ─────────────────────────────────────────────────────────────────────────────
 
 func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBody) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if not (mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT):
+		return
+
+	if _joint_mode == JointMode.SELECTING_A:
+		_joint_body_a = body
+		_joint_mode = JointMode.SELECTING_B
+		_set_mesh_color(body, Color(1.0, 0.35, 0.35))
+		_status_label.text = "  Click swinging body..."
+	elif _joint_mode == JointMode.SELECTING_B:
+		if body != _joint_body_a:
+			_create_hinge(_joint_body_a, body)
+		_joint_mode = JointMode.NONE
+		_joint_body_a = null
+		_status_label.text = ""
+		_restore_body_colors()
+	else:
 		_select(body)
 
 
@@ -322,6 +357,56 @@ func _apply_props() -> void:
 # Toolbar actions
 # ─────────────────────────────────────────────────────────────────────────────
 
+func _on_add_hinge() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_mode = JointMode.SELECTING_A
+	_joint_body_a = null
+	_status_label.text = "  Click pivot body..."
+
+
+func _create_hinge(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var hinge := SkaleHinge.new()
+	hinge.name = "Hinge%d" % _joint_counter
+
+	# Anchor at the top face of body_a (the pivot/fixed end).
+	var anchor := body_a.position + Vector3(0, body_a.box_size.y * 0.5, 0)
+	hinge.anchor = anchor
+	hinge.axis   = Vector3(1, 0, 0)   # rotate around X (pendulum swings in YZ)
+	hinge.position = anchor
+
+	_sim.add_child(hinge)
+	hinge.body_a_path = hinge.get_path_to(body_a)
+	hinge.body_b_path = hinge.get_path_to(body_b)
+
+	_attach_hinge_visual(hinge)
+	_select(body_b)
+
+
+func _attach_hinge_visual(hinge: SkaleHinge) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.12
+	sphere.height = 0.24
+	mi.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.75, 0.0)
+	mi.material_override = mat
+	hinge.add_child(mi)
+
+
+func _restore_body_colors() -> void:
+	for i in _sim.get_child_count():
+		var body := _sim.get_child(i) as SkaleBody
+		if body:
+			var col := COLOR_FIXED if body.get_fixed() else COLOR_DYNAMIC
+			if body == _selected:
+				col = COLOR_SELECTED
+			_set_mesh_color(body, col)
+
+
 func _on_add_box() -> void:
 	if _mode != Mode.DESIGN:
 		return
@@ -364,6 +449,9 @@ func _on_pause() -> void:
 
 func _on_stop() -> void:
 	_mode = Mode.DESIGN
+	_joint_mode = JointMode.NONE
+	_joint_body_a = null
+	_status_label.text = ""
 	_sim.stop()
 	_btn_play.text      = "▶  Play"
 	_btn_play.disabled  = false

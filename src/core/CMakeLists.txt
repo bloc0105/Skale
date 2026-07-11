@@ -8,6 +8,8 @@ set(SOURCES
     simulation_core.cpp
     body_core.h
     body_core.cpp
+    joint_core.h
+    joint_core.cpp
 )
 
 add_library(skale_core STATIC ${SOURCES})

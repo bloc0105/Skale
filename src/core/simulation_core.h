@@ -13,9 +13,8 @@ public:
     Vec3 get_gravity() const;
     void step(double dt);
 
-    // Adds a type-erased ChBody handle to the simulation.
-    // Called by BodyCore after creating its ChBody.
     void add_body(std::shared_ptr<void> chrono_body_handle);
+    void add_link(std::shared_ptr<void> chrono_link_handle);
 
 private:
     struct Impl;

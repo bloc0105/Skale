@@ -34,6 +34,10 @@ void BodyCore::initialize_box(SimulationCore *sim, Vec3 size, double density, bo
     sim->add_body(std::static_pointer_cast<void>(m_impl->body));
 }
 
+std::shared_ptr<void> BodyCore::get_chrono_body() const {
+    return std::static_pointer_cast<void>(m_impl->body);
+}
+
 void BodyCore::get_transform(Vec3 &pos, Quat &rot) const {
     const auto &p = m_impl->body->GetPos();
     const auto &q = m_impl->body->GetRot();

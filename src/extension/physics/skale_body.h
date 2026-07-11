@@ -37,6 +37,9 @@ public:
     // Called by SkaleSimulation every step to sync Chrono → Node3D transform.
     void sync_transform();
 
+    // C++ only — used by SkaleHinge to get the underlying ChBody handle.
+    std::shared_ptr<void> get_body_handle() const;
+
     // Backward-compat: explicit init used by the headless test script.
     void initialize_box(SkaleSimulation *sim, Vector3 size, double density, bool fixed);
 

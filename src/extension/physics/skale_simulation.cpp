@@ -1,5 +1,6 @@
 #include "skale_simulation.h"
 #include "skale_body.h"
+#include "skale_hinge.h"
 #include <godot_cpp/core/class_db.hpp>
 
 namespace godot {
@@ -45,10 +46,16 @@ void SkaleSimulation::play() {
     if (m_running) return;
     m_bodies.clear();
     int count = get_child_count();
+    // Bodies must be initialized before joints.
     for (int i = 0; i < count; i++) {
         SkaleBody *body = Object::cast_to<SkaleBody>(get_child(i));
         if (body)
             body->initialize_for_run(this);
+    }
+    for (int i = 0; i < count; i++) {
+        SkaleHinge *hinge = Object::cast_to<SkaleHinge>(get_child(i));
+        if (hinge)
+            hinge->initialize_for_run(this);
     }
     m_running = true;
     m_paused  = false;
@@ -60,6 +67,12 @@ void SkaleSimulation::stop() {
     for (SkaleBody *body : m_bodies)
         body->reset_to_design();
     m_bodies.clear();
+    int count = get_child_count();
+    for (int i = 0; i < count; i++) {
+        SkaleHinge *hinge = Object::cast_to<SkaleHinge>(get_child(i));
+        if (hinge)
+            hinge->reset_to_design();
+    }
     m_core = std::make_unique<skale::SimulationCore>();
 }
 
