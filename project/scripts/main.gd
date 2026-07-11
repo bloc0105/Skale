@@ -33,10 +33,12 @@ var _joint_counter := 0
 var _updating_props := false   # guard against feedback loops
 
 # ── Joint creation state ──────────────────────────────────────────────────────
-enum JointMode { NONE, SELECTING_A, SELECTING_B }
+enum JointMode { NONE, PICKING_AXIS, SELECTING_A, SELECTING_B }
 var _joint_mode   := JointMode.NONE
 var _joint_body_a: SkaleBody = null
+var _joint_axis   := Vector3(0, 0, 1)   # default: Z axis, pendulum swings in XY
 var _status_label: Label
+var _axis_buttons: HBoxContainer
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 const COLOR_DYNAMIC  := Color(0.30, 0.55, 1.00)
@@ -190,6 +192,19 @@ func _build_toolbar(root: Control) -> void:
 	btn_hinge.pressed.connect(_on_add_hinge)
 	hbox.add_child(btn_hinge)
 
+	_axis_buttons = HBoxContainer.new()
+	_axis_buttons.visible = false
+	_axis_buttons.add_theme_constant_override("separation", 2)
+	var axis_lbl := Label.new(); axis_lbl.text = " Axis:"
+	_axis_buttons.add_child(axis_lbl)
+	for axis_name in ["X", "Y", "Z"]:
+		var btn := Button.new()
+		btn.text = axis_name
+		btn.toggle_mode = true
+		btn.pressed.connect(_on_axis_picked.bind(axis_name))
+		_axis_buttons.add_child(btn)
+	hbox.add_child(_axis_buttons)
+
 	_status_label = Label.new()
 	_status_label.text = ""
 	_status_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
@@ -318,6 +333,7 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 		_joint_mode = JointMode.NONE
 		_joint_body_a = null
 		_status_label.text = ""
+		_axis_buttons.visible = false
 		_restore_body_colors()
 	else:
 		_select(body)
@@ -376,8 +392,29 @@ func _apply_props() -> void:
 func _on_add_hinge() -> void:
 	if _mode != Mode.DESIGN:
 		return
-	_joint_mode = JointMode.SELECTING_A
+	_joint_mode = JointMode.PICKING_AXIS
 	_joint_body_a = null
+	_axis_buttons.visible = true
+	_status_label.text = "  Pick swing axis, then click pivot body..."
+	# Un-press all axis buttons
+	for i in range(1, _axis_buttons.get_child_count()):
+		var btn := _axis_buttons.get_child(i) as Button
+		if btn:
+			btn.button_pressed = false
+
+
+func _on_axis_picked(axis_name: String) -> void:
+	match axis_name:
+		"X": _joint_axis = Vector3(1, 0, 0)
+		"Y": _joint_axis = Vector3(0, 1, 0)
+		"Z": _joint_axis = Vector3(0, 0, 1)
+	# Press only the chosen button
+	var names := ["X", "Y", "Z"]
+	for i in range(names.size()):
+		var btn := _axis_buttons.get_child(i + 1) as Button
+		if btn:
+			btn.button_pressed = (names[i] == axis_name)
+	_joint_mode = JointMode.SELECTING_A
 	_status_label.text = "  Click pivot body..."
 
 
@@ -389,7 +426,7 @@ func _create_hinge(body_a: SkaleBody, body_b: SkaleBody) -> void:
 	# Anchor at the top face of body_a (the pivot/fixed end).
 	var anchor := body_a.position + Vector3(0, body_a.box_size.y * 0.5, 0)
 	hinge.anchor = anchor
-	hinge.axis   = Vector3(1, 0, 0)   # rotate around X (pendulum swings in YZ)
+	hinge.axis   = _joint_axis
 	hinge.position = anchor
 
 	_sim.add_child(hinge)
@@ -468,6 +505,7 @@ func _on_stop() -> void:
 	_joint_mode = JointMode.NONE
 	_joint_body_a = null
 	_status_label.text = ""
+	_axis_buttons.visible = false
 	_sim.stop()
 	_btn_play.text      = "▶  Play"
 	_btn_play.disabled  = false
