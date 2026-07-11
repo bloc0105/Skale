@@ -56,7 +56,7 @@ Development is organized into sequential phases, each with a clear deliverable. 
 ## Phase 4 — Constraints & Joints
 **Deliverable:** A working pendulum and a crank-slider mechanism can be built and simulated in the app.
 
-- [ ] Hinge joint (wheel, door, pendulum)
+- [x] Hinge joint (wheel, door, pendulum) — axis picker, gold visual, two-body selection flow
 - [ ] Slider joint (piston, drawer)
 - [ ] Fixed joint (weld two bodies)
 - [ ] Spring-damper
