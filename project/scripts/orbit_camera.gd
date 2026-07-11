@@ -14,13 +14,14 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		match event.button_index:
+		var mb := event as InputEventMouseButton
+		match mb.button_index:
 			MOUSE_BUTTON_MIDDLE:
-				_orbiting = event.pressed
-				_last_mouse = event.position
+				_orbiting = mb.pressed
+				_last_mouse = mb.position
 			MOUSE_BUTTON_RIGHT:
-				_panning = event.pressed
-				_last_mouse = event.position
+				_panning = mb.pressed
+				_last_mouse = mb.position
 			MOUSE_BUTTON_WHEEL_UP:
 				distance = max(1.0, distance * 0.9)
 				_update_transform()
@@ -29,8 +30,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_update_transform()
 
 	elif event is InputEventMouseMotion:
-		var delta := event.position - _last_mouse
-		_last_mouse = event.position
+		var mm := event as InputEventMouseMotion
+		var delta := mm.position - _last_mouse
+		_last_mouse = mm.position
 
 		if _orbiting:
 			yaw   -= delta.x * 0.3
@@ -38,10 +40,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_update_transform()
 		elif _panning:
 			var right := transform.basis.x
-			var up    := Vector3.UP
 			var scale := distance * 0.002
-			target -= right * delta.x * scale
-			target += up    * delta.y * scale
+			target -= right    * delta.x * scale
+			target += Vector3.UP * delta.y * scale
 			_update_transform()
 
 func _update_transform() -> void:
