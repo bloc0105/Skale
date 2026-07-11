@@ -37,7 +37,7 @@ enum JointMode { NONE, PICKING_AXIS, SELECTING_A, SELECTING_B }
 var _joint_mode   := JointMode.NONE
 var _joint_body_a: SkaleBody = null
 var _joint_axis   := Vector3(0, 0, 1)   # default: Z axis, pendulum swings in XY
-var _joint_type   := "hinge"            # "hinge" or "slider"
+var _joint_type   := "hinge"            # "hinge", "slider", or "spring"
 var _status_label: Label
 var _axis_buttons: HBoxContainer
 
@@ -198,6 +198,11 @@ func _build_toolbar(root: Control) -> void:
 	btn_slider.pressed.connect(_on_add_slider)
 	hbox.add_child(btn_slider)
 
+	var btn_spring := Button.new()
+	btn_spring.text = "+ Spring"
+	btn_spring.pressed.connect(_on_add_spring)
+	hbox.add_child(btn_spring)
+
 	_axis_buttons = HBoxContainer.new()
 	_axis_buttons.visible = false
 	_axis_buttons.add_theme_constant_override("separation", 2)
@@ -332,16 +337,16 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 		_joint_body_a = body
 		_joint_mode = JointMode.SELECTING_B
 		_set_mesh_color(body, Color(1.0, 0.35, 0.35))
-		if _joint_type == "hinge":
-			_status_label.text = "  Click swinging body..."
-		else:
-			_status_label.text = "  Click sliding body..."
+		match _joint_type:
+			"hinge":  _status_label.text = "  Click swinging body..."
+			"slider": _status_label.text = "  Click sliding body..."
+			"spring": _status_label.text = "  Click hanging body..."
 	elif _joint_mode == JointMode.SELECTING_B:
 		if body != _joint_body_a:
-			if _joint_type == "hinge":
-				_create_hinge(_joint_body_a, body)
-			else:
-				_create_slider(_joint_body_a, body)
+			match _joint_type:
+				"hinge":  _create_hinge(_joint_body_a, body)
+				"slider": _create_slider(_joint_body_a, body)
+				"spring": _create_spring(_joint_body_a, body)
 		_joint_mode = JointMode.NONE
 		_joint_body_a = null
 		_status_label.text = ""
@@ -419,6 +424,16 @@ func _on_add_slider() -> void:
 	_joint_body_a = null
 	_axis_buttons.visible = true
 	_status_label.text = "  Pick slide axis, then click guide body (rail)..."
+
+
+func _on_add_spring() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_type = "spring"
+	_joint_mode = JointMode.SELECTING_A   # no axis needed
+	_joint_body_a = null
+	_axis_buttons.visible = false
+	_status_label.text = "  Click anchor body (fixed end)..."
 	# Un-press all axis buttons
 	for i in range(1, _axis_buttons.get_child_count()):
 		var btn := _axis_buttons.get_child(i) as Button
@@ -474,6 +489,47 @@ func _attach_hinge_visual(hinge: SkaleHinge) -> void:
 	mat.albedo_color = Color(1.0, 0.75, 0.0)
 	mi.material_override = mat
 	hinge.add_child(mi)
+
+
+func _create_spring(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var spring := SkaleSpring.new()
+	spring.name = "Spring%d" % _joint_counter
+	spring.position = (body_a.position + body_b.position) * 0.5
+
+	_sim.add_child(spring)
+	spring.body_a_path = spring.get_path_to(body_a)
+	spring.body_b_path = spring.get_path_to(body_b)
+
+	_attach_spring_visual(spring, body_a.position, body_b.position)
+	_select(body_b)
+
+
+func _attach_spring_visual(spring: SkaleSpring, pt_a: Vector3, pt_b: Vector3) -> void:
+	# Draw a thin cylinder from body_a center to body_b center.
+	var diff := pt_b - pt_a
+	var length := diff.length()
+	if length < 0.001:
+		return
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var cyl := CylinderMesh.new()
+	cyl.top_radius    = 0.04
+	cyl.bottom_radius = 0.04
+	cyl.height        = length
+	mi.mesh = cyl
+	# Cylinder default is Y-up; rotate to align with the spring direction.
+	var up := Vector3(0, 1, 0)
+	var dir := diff.normalized()
+	if dir.distance_to(up) > 0.01 and dir.distance_to(-up) > 0.01:
+		mi.basis = Basis(up.cross(dir).normalized(), dir,
+		                 dir.cross(up.cross(dir).normalized()))
+	# Position at midpoint relative to the spring node.
+	mi.position = Vector3.ZERO
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.3, 0.9)
+	mi.material_override = mat
+	spring.add_child(mi)
 
 
 func _create_slider(body_a: SkaleBody, body_b: SkaleBody) -> void:

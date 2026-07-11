@@ -2,6 +2,7 @@
 #include "skale_body.h"
 #include "skale_hinge.h"
 #include "skale_slider.h"
+#include "skale_spring.h"
 #include <godot_cpp/core/class_db.hpp>
 
 namespace godot {
@@ -60,6 +61,9 @@ void SkaleSimulation::play() {
         SkaleSlider *slider = Object::cast_to<SkaleSlider>(get_child(i));
         if (slider)
             slider->initialize_for_run(this);
+        SkaleSpring *spring = Object::cast_to<SkaleSpring>(get_child(i));
+        if (spring)
+            spring->initialize_for_run(this);
     }
     m_running = true;
     m_paused  = false;
@@ -79,6 +83,9 @@ void SkaleSimulation::stop() {
         SkaleSlider *slider = Object::cast_to<SkaleSlider>(get_child(i));
         if (slider)
             slider->reset_to_design();
+        SkaleSpring *spring = Object::cast_to<SkaleSpring>(get_child(i));
+        if (spring)
+            spring->reset_to_design();
     }
     m_core = std::make_unique<skale::SimulationCore>();
 }

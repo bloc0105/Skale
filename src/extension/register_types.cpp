@@ -4,6 +4,7 @@
 #include "physics/skale_body.h"
 #include "physics/skale_hinge.h"
 #include "physics/skale_slider.h"
+#include "physics/skale_spring.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
@@ -20,6 +21,7 @@ void initialize_skale(ModuleInitializationLevel p_level) {
     ClassDB::register_class<SkaleBody>();
     ClassDB::register_class<SkaleHinge>();
     ClassDB::register_class<SkaleSlider>();
+    ClassDB::register_class<SkaleSpring>();
 }
 
 void uninitialize_skale(ModuleInitializationLevel p_level) {}

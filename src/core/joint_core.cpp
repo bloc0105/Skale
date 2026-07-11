@@ -2,6 +2,7 @@
 #include "simulation_core.h"
 
 #include <chrono/physics/ChLinkLock.h>
+#include <chrono/physics/ChLinkTSDA.h>
 #include <chrono/physics/ChBody.h>
 #include <chrono/core/ChTypes.h>
 
@@ -61,6 +62,32 @@ void JointCore::initialize_slider(SimulationCore *sim,
     auto link = chrono_types::make_shared<chrono::ChLinkLockPrismatic>();
     link->Initialize(body_a, body_b, make_joint_frame(anchor, axis));
     m_impl->link = link;
+    sim->add_link(std::static_pointer_cast<void>(m_impl->link));
+}
+
+void JointCore::initialize_spring_damper(SimulationCore *sim,
+                                          std::shared_ptr<void> body_a_handle,
+                                          std::shared_ptr<void> body_b_handle,
+                                          Vec3 point_a,
+                                          Vec3 point_b,
+                                          double stiffness,
+                                          double damping,
+                                          double rest_length) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
+
+    auto tsda = chrono_types::make_shared<chrono::ChLinkTSDA>();
+    tsda->Initialize(body_a, body_b,
+                     true,  // positions are in absolute (world) frame
+                     chrono::ChVector3d(point_a.x, point_a.y, point_a.z),
+                     chrono::ChVector3d(point_b.x, point_b.y, point_b.z));
+    // Rest length defaults to initial distance; override only if explicit.
+    if (rest_length >= 0.0)
+        tsda->SetRestLength(rest_length);
+    tsda->SetSpringCoefficient(stiffness);
+    tsda->SetDampingCoefficient(damping);
+
+    m_impl->link = tsda;
     sim->add_link(std::static_pointer_cast<void>(m_impl->link));
 }
 
