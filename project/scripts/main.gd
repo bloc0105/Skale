@@ -15,6 +15,9 @@ var _btn_stop:  Button
 
 var _prop_panel:       Control
 var _prop_label:       Label
+var _prop_pos_x:       SpinBox
+var _prop_pos_y:       SpinBox
+var _prop_pos_z:       SpinBox
 var _prop_size_x:      SpinBox
 var _prop_size_y:      SpinBox
 var _prop_size_z:      SpinBox
@@ -240,6 +243,12 @@ func _build_props_panel(root: Control) -> void:
 	_prop_panel.visible = false
 	vbox.add_child(_prop_panel)
 
+	_prop_pos_x = _add_spinbox(_prop_panel, "Pos X", -50.0, 50.0)
+	_prop_pos_y = _add_spinbox(_prop_panel, "Pos Y", -50.0, 50.0)
+	_prop_pos_z = _add_spinbox(_prop_panel, "Pos Z", -50.0, 50.0)
+
+	_prop_panel.add_child(HSeparator.new())
+
 	_prop_size_x = _add_spinbox(_prop_panel, "Size X", 0.1, 20.0)
 	_prop_size_y = _add_spinbox(_prop_panel, "Size Y", 0.1, 20.0)
 	_prop_size_z = _add_spinbox(_prop_panel, "Size Z", 0.1, 20.0)
@@ -259,6 +268,9 @@ func _build_props_panel(root: Control) -> void:
 	_prop_restitution.step = 0.05
 
 	# Wire signals
+	_prop_pos_x.value_changed.connect(func(_v): _apply_props())
+	_prop_pos_y.value_changed.connect(func(_v): _apply_props())
+	_prop_pos_z.value_changed.connect(func(_v): _apply_props())
 	_prop_size_x.value_changed.connect(func(_v): _apply_props())
 	_prop_size_y.value_changed.connect(func(_v): _apply_props())
 	_prop_size_z.value_changed.connect(func(_v): _apply_props())
@@ -332,6 +344,9 @@ func _load_props() -> void:
 	if not _selected:
 		return
 	_updating_props = true
+	_prop_pos_x.value       = _selected.position.x
+	_prop_pos_y.value       = _selected.position.y
+	_prop_pos_z.value       = _selected.position.z
 	_prop_size_x.value      = _selected.box_size.x
 	_prop_size_y.value      = _selected.box_size.y
 	_prop_size_z.value      = _selected.box_size.z
@@ -345,6 +360,7 @@ func _load_props() -> void:
 func _apply_props() -> void:
 	if _updating_props or not _selected or _mode != Mode.DESIGN:
 		return
+	_selected.position    = Vector3(_prop_pos_x.value, _prop_pos_y.value, _prop_pos_z.value)
 	_selected.box_size    = Vector3(_prop_size_x.value, _prop_size_y.value, _prop_size_z.value)
 	_selected.density     = _prop_density.value
 	_selected.set_fixed(_prop_fixed.button_pressed)
@@ -469,6 +485,9 @@ func _on_stop() -> void:
 
 
 func _set_props_editable(editable: bool) -> void:
+	_prop_pos_x.editable       = editable
+	_prop_pos_y.editable       = editable
+	_prop_pos_z.editable       = editable
 	_prop_size_x.editable      = editable
 	_prop_size_y.editable      = editable
 	_prop_size_z.editable      = editable
