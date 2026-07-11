@@ -10,45 +10,57 @@
 namespace skale {
 
 struct JointCore::Impl {
-    std::shared_ptr<chrono::ChLinkLockRevolute> link;
+    std::shared_ptr<chrono::ChLink> link;
 };
 
 JointCore::JointCore() : m_impl(std::make_unique<Impl>()) {}
 JointCore::~JointCore() = default;
 
-void JointCore::initialize_hinge(SimulationCore *sim,
-                                  std::shared_ptr<void> body_a_handle,
-                                  std::shared_ptr<void> body_b_handle,
-                                  Vec3 anchor,
-                                  Vec3 axis) {
-    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
-    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
-
-    // Build a rotation that maps the joint frame's Z axis onto `axis`.
-    // ChLinkLockRevolute rotates around the joint frame's Z by convention.
+// Builds a ChFrame whose Z axis aligns with `axis` at position `anchor`.
+// Both ChLinkLockRevolute and ChLinkLockPrismatic use the joint frame's Z.
+static chrono::ChFrame<> make_joint_frame(Vec3 anchor, Vec3 axis) {
     chrono::ChVector3d z(0, 0, 1);
-    chrono::ChVector3d rot_axis(axis.x, axis.y, axis.z);
-    rot_axis.Normalize();
+    chrono::ChVector3d dir(axis.x, axis.y, axis.z);
+    dir.Normalize();
 
     chrono::ChQuaterniond rot;
-    double dot = z.Dot(rot_axis);
+    double dot = z.Dot(dir);
     if (dot > 1.0 - 1e-6) {
         rot = chrono::ChQuaterniond(1, 0, 0, 0);
     } else if (dot < -1.0 + 1e-6) {
         rot.SetFromAngleAxis(M_PI, chrono::ChVector3d(1, 0, 0));
     } else {
-        chrono::ChVector3d cross = z.Cross(rot_axis);
+        chrono::ChVector3d cross = z.Cross(dir);
         cross.Normalize();
         rot.SetFromAngleAxis(std::acos(dot), cross);
     }
 
-    chrono::ChFrame<> joint_frame(
-        chrono::ChVector3d(anchor.x, anchor.y, anchor.z),
-        rot);
+    return chrono::ChFrame<>(chrono::ChVector3d(anchor.x, anchor.y, anchor.z), rot);
+}
 
-    m_impl->link = chrono_types::make_shared<chrono::ChLinkLockRevolute>();
-    m_impl->link->Initialize(body_a, body_b, joint_frame);
+void JointCore::initialize_hinge(SimulationCore *sim,
+                                  std::shared_ptr<void> body_a_handle,
+                                  std::shared_ptr<void> body_b_handle,
+                                  Vec3 anchor, Vec3 axis) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
 
+    auto link = chrono_types::make_shared<chrono::ChLinkLockRevolute>();
+    link->Initialize(body_a, body_b, make_joint_frame(anchor, axis));
+    m_impl->link = link;
+    sim->add_link(std::static_pointer_cast<void>(m_impl->link));
+}
+
+void JointCore::initialize_slider(SimulationCore *sim,
+                                   std::shared_ptr<void> body_a_handle,
+                                   std::shared_ptr<void> body_b_handle,
+                                   Vec3 anchor, Vec3 axis) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
+
+    auto link = chrono_types::make_shared<chrono::ChLinkLockPrismatic>();
+    link->Initialize(body_a, body_b, make_joint_frame(anchor, axis));
+    m_impl->link = link;
     sim->add_link(std::static_pointer_cast<void>(m_impl->link));
 }
 

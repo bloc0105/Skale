@@ -37,6 +37,7 @@ enum JointMode { NONE, PICKING_AXIS, SELECTING_A, SELECTING_B }
 var _joint_mode   := JointMode.NONE
 var _joint_body_a: SkaleBody = null
 var _joint_axis   := Vector3(0, 0, 1)   # default: Z axis, pendulum swings in XY
+var _joint_type   := "hinge"            # "hinge" or "slider"
 var _status_label: Label
 var _axis_buttons: HBoxContainer
 
@@ -192,6 +193,11 @@ func _build_toolbar(root: Control) -> void:
 	btn_hinge.pressed.connect(_on_add_hinge)
 	hbox.add_child(btn_hinge)
 
+	var btn_slider := Button.new()
+	btn_slider.text = "+ Slider"
+	btn_slider.pressed.connect(_on_add_slider)
+	hbox.add_child(btn_slider)
+
 	_axis_buttons = HBoxContainer.new()
 	_axis_buttons.visible = false
 	_axis_buttons.add_theme_constant_override("separation", 2)
@@ -326,10 +332,16 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 		_joint_body_a = body
 		_joint_mode = JointMode.SELECTING_B
 		_set_mesh_color(body, Color(1.0, 0.35, 0.35))
-		_status_label.text = "  Click swinging body..."
+		if _joint_type == "hinge":
+			_status_label.text = "  Click swinging body..."
+		else:
+			_status_label.text = "  Click sliding body..."
 	elif _joint_mode == JointMode.SELECTING_B:
 		if body != _joint_body_a:
-			_create_hinge(_joint_body_a, body)
+			if _joint_type == "hinge":
+				_create_hinge(_joint_body_a, body)
+			else:
+				_create_slider(_joint_body_a, body)
 		_joint_mode = JointMode.NONE
 		_joint_body_a = null
 		_status_label.text = ""
@@ -392,10 +404,21 @@ func _apply_props() -> void:
 func _on_add_hinge() -> void:
 	if _mode != Mode.DESIGN:
 		return
+	_joint_type = "hinge"
 	_joint_mode = JointMode.PICKING_AXIS
 	_joint_body_a = null
 	_axis_buttons.visible = true
 	_status_label.text = "  Pick swing axis, then click pivot body..."
+
+
+func _on_add_slider() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_type = "slider"
+	_joint_mode = JointMode.PICKING_AXIS
+	_joint_body_a = null
+	_axis_buttons.visible = true
+	_status_label.text = "  Pick slide axis, then click guide body (rail)..."
 	# Un-press all axis buttons
 	for i in range(1, _axis_buttons.get_child_count()):
 		var btn := _axis_buttons.get_child(i) as Button
@@ -415,7 +438,10 @@ func _on_axis_picked(axis_name: String) -> void:
 		if btn:
 			btn.button_pressed = (names[i] == axis_name)
 	_joint_mode = JointMode.SELECTING_A
-	_status_label.text = "  Click pivot body..."
+	if _joint_type == "hinge":
+		_status_label.text = "  Click pivot body..."
+	else:
+		_status_label.text = "  Click guide body (rail)..."
 
 
 func _create_hinge(body_a: SkaleBody, body_b: SkaleBody) -> void:
@@ -448,6 +474,45 @@ func _attach_hinge_visual(hinge: SkaleHinge) -> void:
 	mat.albedo_color = Color(1.0, 0.75, 0.0)
 	mi.material_override = mat
 	hinge.add_child(mi)
+
+
+func _create_slider(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var slider := SkaleSlider.new()
+	slider.name = "Slider%d" % _joint_counter
+
+	# Anchor at the midpoint between the two bodies.
+	var anchor := (body_a.position + body_b.position) * 0.5
+	slider.anchor = anchor
+	slider.axis   = _joint_axis
+	slider.position = anchor
+
+	_sim.add_child(slider)
+	slider.body_a_path = slider.get_path_to(body_a)
+	slider.body_b_path = slider.get_path_to(body_b)
+
+	_attach_slider_visual(slider)
+	_select(body_b)
+
+
+func _attach_slider_visual(slider: SkaleSlider) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var cyl := CylinderMesh.new()
+	cyl.top_radius    = 0.06
+	cyl.bottom_radius = 0.06
+	cyl.height        = 0.5
+	mi.mesh = cyl
+	# Orient the cylinder along the slide axis (CylinderMesh default is Y-up).
+	var axis := slider.axis
+	if axis.distance_to(Vector3(0, 1, 0)) > 0.01 and axis.distance_to(Vector3(0, -1, 0)) > 0.01:
+		mi.basis = Basis(Vector3(0, 1, 0).cross(axis).normalized(),
+		                 axis,
+		                 axis.cross(Vector3(0, 1, 0).cross(axis).normalized()))
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.0, 0.80, 0.90)
+	mi.material_override = mat
+	slider.add_child(mi)
 
 
 func _restore_body_colors() -> void:

@@ -57,7 +57,7 @@ Development is organized into sequential phases, each with a clear deliverable. 
 **Deliverable:** A working pendulum and a crank-slider mechanism can be built and simulated in the app.
 
 - [x] Hinge joint (wheel, door, pendulum) — axis picker, gold visual, two-body selection flow
-- [ ] Slider joint (piston, drawer)
+- [x] Slider joint (piston, drawer) — axis picker, teal visual, two-body selection flow
 - [ ] Fixed joint (weld two bodies)
 - [ ] Spring-damper
 - [ ] UI to create constraints between selected bodies

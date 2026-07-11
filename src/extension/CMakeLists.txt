@@ -9,6 +9,8 @@ set(SOURCES
     physics/skale_body.cpp
     physics/skale_hinge.h
     physics/skale_hinge.cpp
+    physics/skale_slider.h
+    physics/skale_slider.cpp
 )
 
 add_library(skale SHARED ${SOURCES})
