@@ -43,13 +43,13 @@ Development is organized into sequential phases, each with a clear deliverable. 
 ## Phase 3 — Design Mode / Run Mode
 **Deliverable:** A user can add objects, configure them, and run a live physics simulation without touching code.
 
-- [ ] 3D viewport with free-fly observer camera (orbit, pan, zoom)
-- [ ] Toolbar and properties panel (Godot UI)
-- [ ] Add primitive bodies in Design mode: box, sphere, cylinder
-- [ ] Set physics properties per body: mass, friction, restitution
-- [ ] **Play** button: transitions to Run mode — Chrono goes live
-- [ ] **Stop** button: returns to Design mode (scene resets)
-- [ ] Pause and single-step controls in Run mode
+- [x] 3D viewport with free-fly observer camera (orbit, pan, zoom)
+- [x] Toolbar and properties panel (Godot UI)
+- [x] Add primitive bodies in Design mode: box
+- [x] Set physics properties per body: mass, friction, restitution
+- [x] **Play** button: transitions to Run mode — Chrono goes live
+- [x] **Stop** button: returns to Design mode (scene resets)
+- [x] Pause and single-step controls in Run mode
 
 ---
 
