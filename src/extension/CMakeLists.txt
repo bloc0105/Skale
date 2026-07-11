@@ -13,6 +13,8 @@ set(SOURCES
     physics/skale_slider.cpp
     physics/skale_spring.h
     physics/skale_spring.cpp
+    physics/skale_fixed.h
+    physics/skale_fixed.cpp
 )
 
 add_library(skale SHARED ${SOURCES})

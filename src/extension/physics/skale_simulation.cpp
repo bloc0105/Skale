@@ -3,6 +3,7 @@
 #include "skale_hinge.h"
 #include "skale_slider.h"
 #include "skale_spring.h"
+#include "skale_fixed.h"
 #include <godot_cpp/core/class_db.hpp>
 
 namespace godot {
@@ -64,6 +65,9 @@ void SkaleSimulation::play() {
         SkaleSpring *spring = Object::cast_to<SkaleSpring>(get_child(i));
         if (spring)
             spring->initialize_for_run(this);
+        SkaleFixed *fixed_joint = Object::cast_to<SkaleFixed>(get_child(i));
+        if (fixed_joint)
+            fixed_joint->initialize_for_run(this);
     }
     m_running = true;
     m_paused  = false;
@@ -86,6 +90,9 @@ void SkaleSimulation::stop() {
         SkaleSpring *spring = Object::cast_to<SkaleSpring>(get_child(i));
         if (spring)
             spring->reset_to_design();
+        SkaleFixed *fixed_joint = Object::cast_to<SkaleFixed>(get_child(i));
+        if (fixed_joint)
+            fixed_joint->reset_to_design();
     }
     m_core = std::make_unique<skale::SimulationCore>();
 }

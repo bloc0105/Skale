@@ -25,6 +25,12 @@ public:
                            Vec3 anchor,
                            Vec3 axis);
 
+    // Fixed (weld) joint — locks all 6 DOFs at the bodies' current relative pose.
+    void initialize_fixed(SimulationCore *sim,
+                          std::shared_ptr<void> body_a_handle,
+                          std::shared_ptr<void> body_b_handle,
+                          Vec3 anchor);
+
     // Spring-damper between two attachment points (world space).
     // If rest_length < 0, uses the initial distance between the points.
     void initialize_spring_damper(SimulationCore *sim,

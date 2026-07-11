@@ -65,6 +65,22 @@ void JointCore::initialize_slider(SimulationCore *sim,
     sim->add_link(std::static_pointer_cast<void>(m_impl->link));
 }
 
+void JointCore::initialize_fixed(SimulationCore *sim,
+                                  std::shared_ptr<void> body_a_handle,
+                                  std::shared_ptr<void> body_b_handle,
+                                  Vec3 anchor) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
+
+    // Identity orientation — ChLinkLockLock locks everything regardless.
+    chrono::ChFrame<> frame(chrono::ChVector3d(anchor.x, anchor.y, anchor.z),
+                            chrono::ChQuaterniond(1, 0, 0, 0));
+    auto link = chrono_types::make_shared<chrono::ChLinkLockLock>();
+    link->Initialize(body_a, body_b, frame);
+    m_impl->link = link;
+    sim->add_link(std::static_pointer_cast<void>(m_impl->link));
+}
+
 void JointCore::initialize_spring_damper(SimulationCore *sim,
                                           std::shared_ptr<void> body_a_handle,
                                           std::shared_ptr<void> body_b_handle,

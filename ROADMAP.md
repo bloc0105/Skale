@@ -58,8 +58,8 @@ Development is organized into sequential phases, each with a clear deliverable. 
 
 - [x] Hinge joint (wheel, door, pendulum) — axis picker, gold visual, two-body selection flow
 - [x] Slider joint (piston, drawer) — axis picker, teal visual, two-body selection flow
-- [ ] Fixed joint (weld two bodies)
-- [ ] Spring-damper
+- [x] Fixed joint (weld two bodies) — locks all 6 DOFs at design-time relative pose, white diamond visual
+- [x] Spring-damper — stiffness/damping properties, auto rest length from initial positions
 - [ ] UI to create constraints between selected bodies
 - [ ] Constraint properties panel (limits, stiffness, etc.)
 

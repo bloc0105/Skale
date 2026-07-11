@@ -37,7 +37,7 @@ enum JointMode { NONE, PICKING_AXIS, SELECTING_A, SELECTING_B }
 var _joint_mode   := JointMode.NONE
 var _joint_body_a: SkaleBody = null
 var _joint_axis   := Vector3(0, 0, 1)   # default: Z axis, pendulum swings in XY
-var _joint_type   := "hinge"            # "hinge", "slider", or "spring"
+var _joint_type   := "hinge"            # "hinge", "slider", "spring", or "weld"
 var _status_label: Label
 var _axis_buttons: HBoxContainer
 
@@ -203,6 +203,11 @@ func _build_toolbar(root: Control) -> void:
 	btn_spring.pressed.connect(_on_add_spring)
 	hbox.add_child(btn_spring)
 
+	var btn_weld := Button.new()
+	btn_weld.text = "+ Weld"
+	btn_weld.pressed.connect(_on_add_weld)
+	hbox.add_child(btn_weld)
+
 	_axis_buttons = HBoxContainer.new()
 	_axis_buttons.visible = false
 	_axis_buttons.add_theme_constant_override("separation", 2)
@@ -341,12 +346,14 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 			"hinge":  _status_label.text = "  Click swinging body..."
 			"slider": _status_label.text = "  Click sliding body..."
 			"spring": _status_label.text = "  Click hanging body..."
+			"weld":   _status_label.text = "  Click body to weld..."
 	elif _joint_mode == JointMode.SELECTING_B:
 		if body != _joint_body_a:
 			match _joint_type:
 				"hinge":  _create_hinge(_joint_body_a, body)
 				"slider": _create_slider(_joint_body_a, body)
 				"spring": _create_spring(_joint_body_a, body)
+				"weld":   _create_weld(_joint_body_a, body)
 		_joint_mode = JointMode.NONE
 		_joint_body_a = null
 		_status_label.text = ""
@@ -426,6 +433,16 @@ func _on_add_slider() -> void:
 	_status_label.text = "  Pick slide axis, then click guide body (rail)..."
 
 
+func _on_add_weld() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_type = "weld"
+	_joint_mode = JointMode.SELECTING_A
+	_joint_body_a = null
+	_axis_buttons.visible = false
+	_status_label.text = "  Click first body to weld..."
+
+
 func _on_add_spring() -> void:
 	if _mode != Mode.DESIGN:
 		return
@@ -489,6 +506,31 @@ func _attach_hinge_visual(hinge: SkaleHinge) -> void:
 	mat.albedo_color = Color(1.0, 0.75, 0.0)
 	mi.material_override = mat
 	hinge.add_child(mi)
+
+
+func _create_weld(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var weld := SkaleFixed.new()
+	weld.name = "Weld%d" % _joint_counter
+	weld.position = (body_a.position + body_b.position) * 0.5
+
+	_sim.add_child(weld)
+	weld.body_a_path = weld.get_path_to(body_a)
+	weld.body_b_path = weld.get_path_to(body_b)
+
+	# Small white diamond to mark the weld point.
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var box := BoxMesh.new()
+	box.size = Vector3(0.15, 0.15, 0.15)
+	mi.mesh = box
+	mi.rotation_degrees = Vector3(45, 45, 0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 1.0, 1.0)
+	mi.material_override = mat
+	weld.add_child(mi)
+
+	_select(body_b)
 
 
 func _create_spring(body_a: SkaleBody, body_b: SkaleBody) -> void:
