@@ -9,14 +9,21 @@ SkaleSimulation::SkaleSimulation()
 
 void SkaleSimulation::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_gravity", "gravity"), &SkaleSimulation::set_gravity);
-    ClassDB::bind_method(D_METHOD("get_gravity"), &SkaleSimulation::get_gravity);
-    ClassDB::bind_method(D_METHOD("step", "dt"), &SkaleSimulation::step);
+    ClassDB::bind_method(D_METHOD("get_gravity"),            &SkaleSimulation::get_gravity);
+    ClassDB::bind_method(D_METHOD("step", "dt"),             &SkaleSimulation::step);
+    ClassDB::bind_method(D_METHOD("play"),                   &SkaleSimulation::play);
+    ClassDB::bind_method(D_METHOD("stop"),                   &SkaleSimulation::stop);
+    ClassDB::bind_method(D_METHOD("pause"),                  &SkaleSimulation::pause);
+    ClassDB::bind_method(D_METHOD("resume"),                 &SkaleSimulation::resume);
+    ClassDB::bind_method(D_METHOD("is_running"),             &SkaleSimulation::is_running);
+    ClassDB::bind_method(D_METHOD("is_paused"),              &SkaleSimulation::is_paused);
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "gravity"), "set_gravity", "get_gravity");
 }
 
 void SkaleSimulation::_process(double delta) {
-    step(delta);
+    if (m_running && !m_paused)
+        step(delta);
 }
 
 void SkaleSimulation::set_gravity(Vector3 g) {
@@ -33,6 +40,39 @@ void SkaleSimulation::step(double dt) {
     for (SkaleBody *body : m_bodies)
         body->sync_transform();
 }
+
+void SkaleSimulation::play() {
+    if (m_running) return;
+    m_bodies.clear();
+    int count = get_child_count();
+    for (int i = 0; i < count; i++) {
+        SkaleBody *body = Object::cast_to<SkaleBody>(get_child(i));
+        if (body)
+            body->initialize_for_run(this);
+    }
+    m_running = true;
+    m_paused  = false;
+}
+
+void SkaleSimulation::stop() {
+    m_running = false;
+    m_paused  = false;
+    for (SkaleBody *body : m_bodies)
+        body->reset_to_design();
+    m_bodies.clear();
+    m_core = std::make_unique<skale::SimulationCore>();
+}
+
+void SkaleSimulation::pause() {
+    if (m_running) m_paused = true;
+}
+
+void SkaleSimulation::resume() {
+    if (m_running) m_paused = false;
+}
+
+bool SkaleSimulation::is_running() const { return m_running; }
+bool SkaleSimulation::is_paused()  const { return m_paused;  }
 
 void SkaleSimulation::register_body(SkaleBody *body) {
     m_bodies.push_back(body);

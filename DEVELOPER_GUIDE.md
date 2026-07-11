@@ -173,44 +173,53 @@ You only need to do this once per clone. After that, the `.godot/` cache persist
 
 ---
 
-## Step 6 — Run the Physics Test
+## Step 6 — Verify the Build
 
-**Before running, verify the build output is in place:**
+Before launching, confirm the extension is in place and all runtime libraries are found:
+
 ```bash
 ls project/bin/libskale.so          # must exist
 ldd project/bin/libskale.so         # all deps must show a path, none "not found"
 ```
 
 If `libskale.so` is missing, the build failed — check ninja output for errors.  
-If any `ldd` entry shows `not found`, a runtime library is missing (most likely `libChronoEngine.so` — check that Chrono was installed with `sudo ninja install`).
+If any `ldd` entry shows `not found`, a runtime library is missing. Most likely `libChronoEngine.so` — confirm Chrono was installed with `sudo ninja install`.
 
-**Run from the repo root (not the `build/` directory):**
+**Optional — headless physics regression test:**
 ```bash
-/path/to/godot --headless --path project --script res://scripts/test.gd -v
+/path/to/godot --headless --path project --script res://scripts/test.gd
+```
+Expected: a box falls from y=5 and comes to rest at y=0.35. If that passes, the physics stack is healthy.
+
+---
+
+## Step 7 — Run Skale
+
+```bash
+/path/to/godot --path project
 ```
 
-Replace `/path/to/godot` with your actual Godot binary path (e.g. `~/bin/godot`).
+Replace `/path/to/godot` with your binary path (e.g. `~/bin/godot`). Run from the repo root.
 
-**Expected output:**
+**What you'll see:**
 
-```
---- Skale Physics Test ---
-  t(s)     box_y
-  0.000    5.0000
-  0.333    4.4278
-  0.667    2.7655
-  1.000    0.3980
-  1.333    0.4035
-  1.667    0.3500
-  2.000    0.3500
-  ...
-  4.000    0.3500
---- Done ---
-```
+- A dark 3D viewport with a gray floor
+- Toolbar along the top
+- Properties panel on the right
 
-The box starts at y=5, falls under gravity, hits the floor (~t=1s), bounces once, and comes to rest at y=0.35. That rest position is deterministic: floor top (y=0.1) + box half-height (0.25) = 0.35.
+**Controls:**
 
-> **Note on the `-v` flag:** Recommended but optional.
+| Action | Input |
+|---|---|
+| Orbit camera | Middle-mouse drag |
+| Pan camera | Right-mouse drag |
+| Zoom | Scroll wheel |
+| Add a box | Click **+ Box** in the toolbar |
+| Select a body | Click on it in the viewport |
+| Edit properties | Modify fields in the Properties panel (Design mode only) |
+| Run simulation | Click **▶ Play** |
+| Pause / resume | Click **⏸ Pause** / **▶ Resume** |
+| Reset scene | Click **⏹ Stop** |
 
 ---
 
@@ -290,6 +299,6 @@ The fix: `src/core/` is a static library (`skale_core`) compiled with normal C++
 
 ## Next Steps
 
-If the physics test passes, you're set up correctly. The next milestone is **Phase 3: Design Mode / Run Mode** — a Godot scene with a 3D viewport, camera, and toolbar where you can add bodies and run the simulation interactively.
+If the physics test passes and the app opens, you're set up correctly.
 
 See [ROADMAP.md](ROADMAP.md) for the full plan.

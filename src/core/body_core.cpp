@@ -14,10 +14,11 @@ struct BodyCore::Impl {
 BodyCore::BodyCore() : m_impl(std::make_unique<Impl>()) {}
 BodyCore::~BodyCore() = default;
 
-void BodyCore::initialize_box(SimulationCore *sim, Vec3 size, double density, bool fixed, Vec3 initial_pos) {
+void BodyCore::initialize_box(SimulationCore *sim, Vec3 size, double density, bool fixed, Vec3 initial_pos,
+                              float friction, float restitution) {
     auto mat = chrono_types::make_shared<chrono::ChContactMaterialNSC>();
-    mat->SetFriction(0.5f);
-    mat->SetRestitution(0.2f);
+    mat->SetFriction(friction);
+    mat->SetRestitution(restitution);
 
     m_impl->body = chrono_types::make_shared<chrono::ChBodyEasyBox>(
         size.x, size.y, size.z,
