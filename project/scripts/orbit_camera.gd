@@ -3,7 +3,7 @@ extends Camera3D
 var target   := Vector3.ZERO
 var distance := 12.0
 var yaw      := 45.0
-var pitch    := -30.0
+var pitch    := 30.0
 
 var _orbiting := false
 var _panning  := false
@@ -36,7 +36,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		if _orbiting:
 			yaw   -= delta.x * 0.3
-			pitch  = clamp(pitch - delta.y * 0.3, -89.0, -1.0)
+			pitch  = clamp(pitch - delta.y * 0.3, -85.0, 85.0)
 			_update_transform()
 		elif _panning:
 			var right := transform.basis.x
