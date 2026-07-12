@@ -15,11 +15,19 @@ protected:
     static void _bind_methods();
 
 public:
+    enum ShapeType { BOX = 0, CYLINDER = 1, SPHERE = 2 };
+
     SkaleBody();
 
-    // --- Exported properties (set in Design mode) ---
+    // --- Exported properties ---
+    void set_shape_type(int t);
+    int  get_shape_type() const;
     void set_box_size(Vector3 size);
     Vector3 get_box_size() const;
+    void set_radius(float r);
+    float get_radius() const;
+    void set_height(float h);
+    float get_height() const;
     void set_density(double density);
     double get_density() const;
     void set_fixed(bool fixed);
@@ -30,29 +38,27 @@ public:
     float get_restitution() const;
 
     // --- Physics lifecycle ---
-    // Called by SkaleSimulation::play() — saves design transform, enters Chrono.
     void initialize_for_run(SkaleSimulation *sim);
-    // Called by SkaleSimulation::stop() — restores saved design transform.
     void reset_to_design();
-    // Called by SkaleSimulation every step to sync Chrono → Node3D transform.
     void sync_transform();
 
-    // C++ only — used by SkaleHinge to get the underlying ChBody handle.
     std::shared_ptr<void> get_body_handle() const;
 
-    // Backward-compat: explicit init used by the headless test script.
+    // Backward-compat
     void initialize_box(SkaleSimulation *sim, Vector3 size, double density, bool fixed);
 
 private:
     std::unique_ptr<skale::BodyCore> m_core;
 
+    int        m_shape_type  = BOX;
     Vector3    m_box_size    = Vector3(1, 1, 1);
+    float      m_radius      = 0.5f;
+    float      m_height      = 1.0f;
     double     m_density     = 1000.0;
     bool       m_fixed       = false;
     float      m_friction    = 0.5f;
     float      m_restitution = 0.2f;
 
-    // Saved when Play is pressed; restored on Stop.
     Vector3    m_design_position;
     Quaternion m_design_rotation;
 };

@@ -34,6 +34,34 @@ void BodyCore::initialize_box(SimulationCore *sim, Vec3 size, double density, bo
     sim->add_body(std::static_pointer_cast<void>(m_impl->body));
 }
 
+void BodyCore::initialize_cylinder(SimulationCore *sim, double radius, double height, double density, bool fixed,
+                                    Vec3 initial_pos, float friction, float restitution) {
+    auto mat = chrono_types::make_shared<chrono::ChContactMaterialNSC>();
+    mat->SetFriction(friction);
+    mat->SetRestitution(restitution);
+
+    m_impl->body = chrono_types::make_shared<chrono::ChBodyEasyCylinder>(
+        chrono::ChAxis::Y, radius, height, density, false, true, mat);
+
+    m_impl->body->SetPos(chrono::ChVector3d(initial_pos.x, initial_pos.y, initial_pos.z));
+    m_impl->body->SetFixed(fixed);
+    sim->add_body(std::static_pointer_cast<void>(m_impl->body));
+}
+
+void BodyCore::initialize_sphere(SimulationCore *sim, double radius, double density, bool fixed,
+                                  Vec3 initial_pos, float friction, float restitution) {
+    auto mat = chrono_types::make_shared<chrono::ChContactMaterialNSC>();
+    mat->SetFriction(friction);
+    mat->SetRestitution(restitution);
+
+    m_impl->body = chrono_types::make_shared<chrono::ChBodyEasySphere>(
+        radius, density, false, true, mat);
+
+    m_impl->body->SetPos(chrono::ChVector3d(initial_pos.x, initial_pos.y, initial_pos.z));
+    m_impl->body->SetFixed(fixed);
+    sim->add_body(std::static_pointer_cast<void>(m_impl->body));
+}
+
 std::shared_ptr<void> BodyCore::get_chrono_body() const {
     return std::static_pointer_cast<void>(m_impl->body);
 }

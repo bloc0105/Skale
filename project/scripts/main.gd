@@ -21,6 +21,13 @@ var _prop_pos_z:       SpinBox
 var _prop_size_x:      SpinBox
 var _prop_size_y:      SpinBox
 var _prop_size_z:      SpinBox
+var _prop_size_row_x:  HBoxContainer
+var _prop_size_row_y:  HBoxContainer
+var _prop_size_row_z:  HBoxContainer
+var _prop_radius:      SpinBox
+var _prop_height:      SpinBox
+var _prop_radius_row:  HBoxContainer
+var _prop_height_row:  HBoxContainer
 var _prop_density:     SpinBox
 var _prop_fixed:       CheckBox
 var _prop_friction:    SpinBox
@@ -106,22 +113,54 @@ func _add_floor() -> void:
 func _attach_mesh(body: SkaleBody, color: Color) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Mesh"
-	var bm := BoxMesh.new()
-	bm.size = body.box_size
-	mi.mesh = bm
+	mi.mesh = _make_mesh(body)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
 	mi.material_override = mat
 	body.add_child(mi)
 
 
+func _make_mesh(body: SkaleBody) -> Mesh:
+	match body.shape_type:
+		SkaleBody.CYLINDER:
+			var m := CylinderMesh.new()
+			m.top_radius    = body.radius
+			m.bottom_radius = body.radius
+			m.height        = body.height
+			return m
+		SkaleBody.SPHERE:
+			var m := SphereMesh.new()
+			m.radius = body.radius
+			m.height = body.radius * 2.0
+			return m
+		_: # BOX
+			var m := BoxMesh.new()
+			m.size = body.box_size
+			return m
+
+
+func _make_picker_shape(body: SkaleBody) -> Shape3D:
+	match body.shape_type:
+		SkaleBody.CYLINDER:
+			var s := CylinderShape3D.new()
+			s.radius = body.radius
+			s.height = body.height
+			return s
+		SkaleBody.SPHERE:
+			var s := SphereShape3D.new()
+			s.radius = body.radius
+			return s
+		_: # BOX
+			var s := BoxShape3D.new()
+			s.size = body.box_size
+			return s
+
+
 func _attach_picker(body: SkaleBody) -> void:
 	var area := Area3D.new()
 	area.name = "Picker"
 	var cs := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = body.box_size
-	cs.shape = shape
+	cs.shape = _make_picker_shape(body)
 	area.add_child(cs)
 	body.add_child(area)
 	area.input_event.connect(_on_body_clicked.bind(body))
@@ -135,19 +174,14 @@ func _set_mesh_color(body: SkaleBody, color: Color) -> void:
 
 func _rebuild_mesh(body: SkaleBody) -> void:
 	var mi := body.get_node_or_null("Mesh") as MeshInstance3D
-	if not mi:
-		return
-	var bm := BoxMesh.new()
-	bm.size = body.box_size
-	mi.mesh = bm
+	if mi:
+		mi.mesh = _make_mesh(body)
 
 	var picker := body.get_node_or_null("Picker") as Area3D
 	if picker:
 		var cs := picker.get_node_or_null("CollisionShape3D") as CollisionShape3D
 		if cs:
-			var shape := BoxShape3D.new()
-			shape.size = body.box_size
-			cs.shape = shape
+			cs.shape = _make_picker_shape(body)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -187,6 +221,16 @@ func _build_toolbar(root: Control) -> void:
 	btn_box.text = "+ Box"
 	btn_box.pressed.connect(_on_add_box)
 	hbox.add_child(btn_box)
+
+	var btn_cyl := Button.new()
+	btn_cyl.text = "+ Cylinder"
+	btn_cyl.pressed.connect(_on_add_cylinder)
+	hbox.add_child(btn_cyl)
+
+	var btn_sph := Button.new()
+	btn_sph.text = "+ Sphere"
+	btn_sph.pressed.connect(_on_add_sphere)
+	hbox.add_child(btn_sph)
 
 	var btn_hinge := Button.new()
 	btn_hinge.text = "+ Hinge"
@@ -274,16 +318,23 @@ func _build_props_panel(root: Control) -> void:
 	_prop_panel.visible = false
 	vbox.add_child(_prop_panel)
 
-	_prop_pos_x = _add_spinbox(_prop_panel, "Pos X", -50.0, 50.0)
-	_prop_pos_y = _add_spinbox(_prop_panel, "Pos Y", -50.0, 50.0)
-	_prop_pos_z = _add_spinbox(_prop_panel, "Pos Z", -50.0, 50.0)
+	_prop_pos_x = _add_spinbox_row(_prop_panel, "Pos X", -50.0, 50.0)
+	_prop_pos_y = _add_spinbox_row(_prop_panel, "Pos Y", -50.0, 50.0)
+	_prop_pos_z = _add_spinbox_row(_prop_panel, "Pos Z", -50.0, 50.0)
 
 	_prop_panel.add_child(HSeparator.new())
 
-	_prop_size_x = _add_spinbox(_prop_panel, "Size X", 0.1, 20.0)
-	_prop_size_y = _add_spinbox(_prop_panel, "Size Y", 0.1, 20.0)
-	_prop_size_z = _add_spinbox(_prop_panel, "Size Z", 0.1, 20.0)
-	_prop_density = _add_spinbox(_prop_panel, "Density", 1.0, 100000.0)
+	_prop_size_x = _add_spinbox_row(_prop_panel, "Size X", 0.1, 20.0)
+	_prop_size_row_x = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
+	_prop_size_y = _add_spinbox_row(_prop_panel, "Size Y", 0.1, 20.0)
+	_prop_size_row_y = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
+	_prop_size_z = _add_spinbox_row(_prop_panel, "Size Z", 0.1, 20.0)
+	_prop_size_row_z = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
+	_prop_radius = _add_spinbox_row(_prop_panel, "Radius", 0.05, 10.0)
+	_prop_radius_row = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
+	_prop_height = _add_spinbox_row(_prop_panel, "Height", 0.1, 20.0)
+	_prop_height_row = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
+	_prop_density = _add_spinbox_row(_prop_panel, "Density", 1.0, 100000.0)
 	_prop_density.step = 10.0
 
 	var fixed_row := HBoxContainer.new()
@@ -293,9 +344,9 @@ func _build_props_panel(root: Control) -> void:
 	fixed_row.add_child(_prop_fixed)
 	_prop_panel.add_child(fixed_row)
 
-	_prop_friction    = _add_spinbox(_prop_panel, "Friction",    0.0, 2.0)
+	_prop_friction    = _add_spinbox_row(_prop_panel, "Friction",    0.0, 2.0)
 	_prop_friction.step = 0.05
-	_prop_restitution = _add_spinbox(_prop_panel, "Restitution", 0.0, 1.0)
+	_prop_restitution = _add_spinbox_row(_prop_panel, "Restitution", 0.0, 1.0)
 	_prop_restitution.step = 0.05
 
 	# Wire signals
@@ -305,13 +356,15 @@ func _build_props_panel(root: Control) -> void:
 	_prop_size_x.value_changed.connect(func(_v): _apply_props())
 	_prop_size_y.value_changed.connect(func(_v): _apply_props())
 	_prop_size_z.value_changed.connect(func(_v): _apply_props())
+	_prop_radius.value_changed.connect(func(_v): _apply_props())
+	_prop_height.value_changed.connect(func(_v): _apply_props())
 	_prop_density.value_changed.connect(func(_v): _apply_props())
 	_prop_fixed.toggled.connect(func(_v): _apply_props())
 	_prop_friction.value_changed.connect(func(_v): _apply_props())
 	_prop_restitution.value_changed.connect(func(_v): _apply_props())
 
 
-func _add_spinbox(parent: Control, label_text: String, min_v: float, max_v: float) -> SpinBox:
+func _add_spinbox_row(parent: Control, label_text: String, min_v: float, max_v: float) -> SpinBox:
 	var row := HBoxContainer.new()
 	var lbl := Label.new()
 	lbl.text = label_text
@@ -384,17 +437,30 @@ func _load_props() -> void:
 	if not _selected:
 		return
 	_updating_props = true
-	_prop_pos_x.value       = _selected.position.x
-	_prop_pos_y.value       = _selected.position.y
-	_prop_pos_z.value       = _selected.position.z
-	_prop_size_x.value      = _selected.box_size.x
-	_prop_size_y.value      = _selected.box_size.y
-	_prop_size_z.value      = _selected.box_size.z
-	_prop_density.value     = _selected.density
+	_prop_pos_x.value          = _selected.position.x
+	_prop_pos_y.value          = _selected.position.y
+	_prop_pos_z.value          = _selected.position.z
+	_prop_size_x.value         = _selected.box_size.x
+	_prop_size_y.value         = _selected.box_size.y
+	_prop_size_z.value         = _selected.box_size.z
+	_prop_radius.value         = _selected.radius
+	_prop_height.value         = _selected.height
+	_prop_density.value        = _selected.density
 	_prop_fixed.button_pressed = _selected.get_fixed()
-	_prop_friction.value    = _selected.friction
-	_prop_restitution.value = _selected.restitution
+	_prop_friction.value       = _selected.friction
+	_prop_restitution.value    = _selected.restitution
+	_update_shape_rows(_selected.shape_type)
 	_updating_props = false
+
+
+func _update_shape_rows(shape_type: int) -> void:
+	var is_box := shape_type == SkaleBody.BOX
+	var is_cyl := shape_type == SkaleBody.CYLINDER
+	_prop_size_row_x.visible = is_box
+	_prop_size_row_y.visible = is_box
+	_prop_size_row_z.visible = is_box
+	_prop_radius_row.visible = not is_box
+	_prop_height_row.visible = is_cyl
 
 
 func _apply_props() -> void:
@@ -402,6 +468,8 @@ func _apply_props() -> void:
 		return
 	_selected.position    = Vector3(_prop_pos_x.value, _prop_pos_y.value, _prop_pos_z.value)
 	_selected.box_size    = Vector3(_prop_size_x.value, _prop_size_y.value, _prop_size_z.value)
+	_selected.radius      = _prop_radius.value
+	_selected.height      = _prop_height.value
 	_selected.density     = _prop_density.value
 	_selected.set_fixed(_prop_fixed.button_pressed)
 	_selected.friction    = _prop_friction.value
@@ -629,7 +697,41 @@ func _on_add_box() -> void:
 	_body_counter += 1
 	var body := SkaleBody.new()
 	body.name = "Box%d" % _body_counter
+	body.shape_type = SkaleBody.BOX
 	body.box_size = Vector3(1.0, 1.0, 1.0)
+	body.density = 1000.0
+	body.position = Vector3(randf_range(-3.0, 3.0), 3.0, randf_range(-3.0, 3.0))
+	_sim.add_child(body)
+	_attach_mesh(body, COLOR_DYNAMIC)
+	_attach_picker(body)
+	_select(body)
+
+
+func _on_add_cylinder() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_body_counter += 1
+	var body := SkaleBody.new()
+	body.name = "Cylinder%d" % _body_counter
+	body.shape_type = SkaleBody.CYLINDER
+	body.radius = 0.5
+	body.height = 1.0
+	body.density = 1000.0
+	body.position = Vector3(randf_range(-3.0, 3.0), 3.0, randf_range(-3.0, 3.0))
+	_sim.add_child(body)
+	_attach_mesh(body, COLOR_DYNAMIC)
+	_attach_picker(body)
+	_select(body)
+
+
+func _on_add_sphere() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_body_counter += 1
+	var body := SkaleBody.new()
+	body.name = "Sphere%d" % _body_counter
+	body.shape_type = SkaleBody.SPHERE
+	body.radius = 0.5
 	body.density = 1000.0
 	body.position = Vector3(randf_range(-3.0, 3.0), 3.0, randf_range(-3.0, 3.0))
 	_sim.add_child(body)
