@@ -7,6 +7,10 @@ namespace godot {
 SkaleBody::SkaleBody() : m_core(std::make_unique<skale::BodyCore>()) {}
 
 void SkaleBody::_bind_methods() {
+    ClassDB::bind_integer_constant(get_class_static(), "ShapeType", "BOX",      BOX);
+    ClassDB::bind_integer_constant(get_class_static(), "ShapeType", "CYLINDER", CYLINDER);
+    ClassDB::bind_integer_constant(get_class_static(), "ShapeType", "SPHERE",   SPHERE);
+
     ClassDB::bind_method(D_METHOD("set_shape_type", "t"),         &SkaleBody::set_shape_type);
     ClassDB::bind_method(D_METHOD("get_shape_type"),              &SkaleBody::get_shape_type);
     ClassDB::bind_method(D_METHOD("set_box_size", "size"),        &SkaleBody::set_box_size);
