@@ -40,32 +40,59 @@ Development is organized into sequential phases, each with a clear deliverable. 
 
 ---
 
-## Phase 3 — Design Mode / Run Mode
+## Phase 3 — Interactive Design & Simulation
 **Deliverable:** A user can add objects, configure them, and run a live physics simulation without touching code.
 
-- [x] 3D viewport with free-fly observer camera (orbit, pan, zoom)
-- [x] Toolbar and properties panel (Godot UI)
-- [x] Add primitive bodies in Design mode: box
-- [x] Set physics properties per body: mass, friction, restitution
-- [x] **Play** button: transitions to Run mode — Chrono goes live
-- [x] **Stop** button: returns to Design mode (scene resets)
-- [x] Pause and single-step controls in Run mode
+- [x] 3D viewport with orbit/pan/zoom camera
+- [x] Toolbar and properties panel (code-generated Godot UI)
+- [x] Primitive bodies: box, cylinder, sphere
+- [x] Per-body physics properties: density, fixed/dynamic, friction, restitution, dimensions
+- [x] Body selection with orange highlight; properties panel shows selected body
+- [x] Delete key removes selected body and all connected joints
+- [x] XYZ axis indicator at world origin
+- [x] **Play** button — Chrono goes live; **Pause** / **Resume**; **Stop** resets scene
+- [x] Properties panel locked read-only during run
 
 ---
 
 ## Phase 4 — Constraints & Joints
-**Deliverable:** A working pendulum and a crank-slider mechanism can be built and simulated in the app.
+**Deliverable:** A working mechanism (pendulum, crank-slider, driven linkage) can be built and simulated.
 
-- [x] Hinge joint (wheel, door, pendulum) — axis picker, gold visual, two-body selection flow
-- [x] Slider joint (piston, drawer) — axis picker, teal visual, two-body selection flow
-- [x] Fixed joint (weld two bodies) — locks all 6 DOFs at design-time relative pose, white diamond visual
-- [x] Spring-damper — stiffness/damping properties, auto rest length from initial positions
-- [ ] UI to create constraints between selected bodies
-- [ ] Constraint properties panel (limits, stiffness, etc.)
+- [x] Hinge joint — revolute, one rotational DOF; axis picker; gold sphere glyph
+- [x] Slider joint — prismatic, one translational DOF; axis picker; teal cylinder glyph
+- [x] Fixed joint (weld) — locks all 6 DOFs at design-time pose; white diamond glyph
+- [x] Spring-damper — stiffness/damping properties; rest length auto-set from initial positions; live visual update during run
+- [x] Motor — driven hinge at constant angular speed (rad/s); orange disk glyph
+- [x] Linear actuator — driven slider at constant linear speed (m/s); green cylinder glyph
+- [x] Ball joint — spherical, 3 rotational DOFs, no translation; magenta sphere glyph
+- [x] Click-to-connect workflow for all joint types (axis picker → body A → body B)
+- [x] Joint visibility toggle — hide/show all gizmos without affecting physics
+- [ ] Constraint properties panel (edit speed, stiffness, axis after placement)
+- [ ] Joint selection (click a glyph to select it and edit its properties)
 
 ---
 
-## Phase 5 — OpenCASCADE Geometry
+## Phase 5 — Save / Load & Scene Format
+**Deliverable:** A scene can be saved to disk and reloaded exactly.
+
+- [x] Save / load `.skale` scenes (JSON format — all bodies and joints)
+- [ ] Gravity direction and magnitude configurable per scene
+- [ ] Scene metadata (name, description, units)
+- [ ] USD export for interoperability (long-term)
+
+---
+
+## Phase 6 — UI Redesign
+**Deliverable:** A polished, intentional interface that matches the Design Philosophy.
+
+- [ ] Toolbar redesigned in Godot editor (.tscn) — File / Create / Connect / Simulate / Display groups
+- [ ] Palette system — contextual step-by-step panels drop from toolbar buttons
+- [ ] Joint and body properties unified in a single context-sensitive panel
+- [ ] Object tree panel (list all bodies and joints; select from tree)
+
+---
+
+## Phase 7 — OpenCASCADE Geometry
 **Deliverable:** Users can build compound shapes with boolean operations and simulate them.
 
 - [ ] OCCT integrated into the GDExtension
@@ -73,25 +100,17 @@ Development is organized into sequential phases, each with a clear deliverable. 
 - [ ] Boolean operations: union, subtract, intersect
 - [ ] Triangulation pipeline: OCCT BRep → Godot `ArrayMesh`
 - [ ] OCCT shapes generate Chrono collision geometry automatically
-- [ ] Design mode geometry tools updated to use OCCT backend
-
----
-
-## Phase 6 — Import / Export
-**Deliverable:** A STEP file from Fusion 360 or FreeCAD can be imported and simulated.
-
-- [ ] STEP import via OCCT
+- [ ] STEP import (Fusion 360, FreeCAD, Onshape)
 - [ ] STL import and export
-- [ ] Save / load Skale scene (custom format)
 
 ---
 
-## Phase 7 — Polish & Packaging
+## Phase 8 — Polish & Packaging
 **Deliverable:** A distributable build that a stranger can download and use.
 
 - [ ] Run mode interaction tools (grab, push, apply point force)
-- [ ] Time controls (pause, slow motion, fast forward)
-- [ ] Measurement tools (distance, angle, volume, mass)
+- [ ] Measurement tools (distance, angle, mass, velocity readout)
+- [ ] Time controls (slow motion, fast forward)
 - [ ] AppImage for Linux
 - [ ] Installer for Windows
 - [ ] User-facing documentation
