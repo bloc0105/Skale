@@ -15,6 +15,12 @@ set(SOURCES
     physics/skale_spring.cpp
     physics/skale_fixed.h
     physics/skale_fixed.cpp
+    physics/skale_motor.h
+    physics/skale_motor.cpp
+    physics/skale_actuator.h
+    physics/skale_actuator.cpp
+    physics/skale_ball.h
+    physics/skale_ball.cpp
 )
 
 add_library(skale SHARED ${SOURCES})

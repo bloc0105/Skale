@@ -4,6 +4,9 @@
 #include "skale_slider.h"
 #include "skale_spring.h"
 #include "skale_fixed.h"
+#include "skale_motor.h"
+#include "skale_actuator.h"
+#include "skale_ball.h"
 #include <godot_cpp/core/class_db.hpp>
 
 namespace godot {
@@ -68,6 +71,15 @@ void SkaleSimulation::play() {
         SkaleFixed *fixed_joint = Object::cast_to<SkaleFixed>(get_child(i));
         if (fixed_joint)
             fixed_joint->initialize_for_run(this);
+        SkaleMotor *motor = Object::cast_to<SkaleMotor>(get_child(i));
+        if (motor)
+            motor->initialize_for_run(this);
+        SkaleActuator *actuator = Object::cast_to<SkaleActuator>(get_child(i));
+        if (actuator)
+            actuator->initialize_for_run(this);
+        SkaleBall *ball = Object::cast_to<SkaleBall>(get_child(i));
+        if (ball)
+            ball->initialize_for_run(this);
     }
     m_running = true;
     m_paused  = false;
@@ -93,6 +105,15 @@ void SkaleSimulation::stop() {
         SkaleFixed *fixed_joint = Object::cast_to<SkaleFixed>(get_child(i));
         if (fixed_joint)
             fixed_joint->reset_to_design();
+        SkaleMotor *motor = Object::cast_to<SkaleMotor>(get_child(i));
+        if (motor)
+            motor->reset_to_design();
+        SkaleActuator *actuator = Object::cast_to<SkaleActuator>(get_child(i));
+        if (actuator)
+            actuator->reset_to_design();
+        SkaleBall *ball = Object::cast_to<SkaleBall>(get_child(i));
+        if (ball)
+            ball->reset_to_design();
     }
     m_core = std::make_unique<skale::SimulationCore>();
 }

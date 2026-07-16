@@ -6,6 +6,9 @@
 #include "physics/skale_slider.h"
 #include "physics/skale_spring.h"
 #include "physics/skale_fixed.h"
+#include "physics/skale_motor.h"
+#include "physics/skale_actuator.h"
+#include "physics/skale_ball.h"
 
 #include <gdextension_interface.h>
 #include <godot_cpp/core/defs.hpp>
@@ -24,6 +27,9 @@ void initialize_skale(ModuleInitializationLevel p_level) {
     ClassDB::register_class<SkaleSlider>();
     ClassDB::register_class<SkaleSpring>();
     ClassDB::register_class<SkaleFixed>();
+    ClassDB::register_class<SkaleMotor>();
+    ClassDB::register_class<SkaleActuator>();
+    ClassDB::register_class<SkaleBall>();
 }
 
 void uninitialize_skale(ModuleInitializationLevel p_level) {}

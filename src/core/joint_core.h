@@ -42,6 +42,28 @@ public:
                                   double damping,
                                   double rest_length = -1.0);
 
+    // Rotational motor — driven revolute joint at constant angular speed (rad/s).
+    void initialize_motor(SimulationCore *sim,
+                          std::shared_ptr<void> body_a_handle,
+                          std::shared_ptr<void> body_b_handle,
+                          Vec3 anchor,
+                          Vec3 axis,
+                          double speed);
+
+    // Linear actuator — driven prismatic joint at constant linear speed (m/s).
+    void initialize_linear_actuator(SimulationCore *sim,
+                                    std::shared_ptr<void> body_a_handle,
+                                    std::shared_ptr<void> body_b_handle,
+                                    Vec3 anchor,
+                                    Vec3 axis,
+                                    double speed);
+
+    // Ball (spherical) joint — 3 rotational DOFs, no translation.
+    void initialize_ball(SimulationCore *sim,
+                         std::shared_ptr<void> body_a_handle,
+                         std::shared_ptr<void> body_b_handle,
+                         Vec3 anchor);
+
 private:
     struct Impl;
     std::unique_ptr<Impl> m_impl;

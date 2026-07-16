@@ -3,8 +3,11 @@
 
 #include <chrono/physics/ChLinkLock.h>
 #include <chrono/physics/ChLinkTSDA.h>
+#include <chrono/physics/ChLinkMotorRotationSpeed.h>
+#include <chrono/physics/ChLinkMotorLinearSpeed.h>
 #include <chrono/physics/ChBody.h>
 #include <chrono/core/ChTypes.h>
+#include <chrono/functions/ChFunctionConst.h>
 
 #include <cmath>
 
@@ -104,6 +107,49 @@ void JointCore::initialize_spring_damper(SimulationCore *sim,
     tsda->SetDampingCoefficient(damping);
 
     m_impl->link = tsda;
+    sim->add_link(std::static_pointer_cast<void>(m_impl->link));
+}
+
+void JointCore::initialize_motor(SimulationCore *sim,
+                                  std::shared_ptr<void> body_a_handle,
+                                  std::shared_ptr<void> body_b_handle,
+                                  Vec3 anchor, Vec3 axis, double speed) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
+
+    auto motor = chrono_types::make_shared<chrono::ChLinkMotorRotationSpeed>();
+    motor->Initialize(body_a, body_b, make_joint_frame(anchor, axis));
+    motor->SetSpeedFunction(chrono_types::make_shared<chrono::ChFunctionConst>(speed));
+    m_impl->link = motor;
+    sim->add_link(std::static_pointer_cast<void>(m_impl->link));
+}
+
+void JointCore::initialize_linear_actuator(SimulationCore *sim,
+                                            std::shared_ptr<void> body_a_handle,
+                                            std::shared_ptr<void> body_b_handle,
+                                            Vec3 anchor, Vec3 axis, double speed) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
+
+    auto actuator = chrono_types::make_shared<chrono::ChLinkMotorLinearSpeed>();
+    actuator->Initialize(body_a, body_b, make_joint_frame(anchor, axis));
+    actuator->SetSpeedFunction(chrono_types::make_shared<chrono::ChFunctionConst>(speed));
+    m_impl->link = actuator;
+    sim->add_link(std::static_pointer_cast<void>(m_impl->link));
+}
+
+void JointCore::initialize_ball(SimulationCore *sim,
+                                 std::shared_ptr<void> body_a_handle,
+                                 std::shared_ptr<void> body_b_handle,
+                                 Vec3 anchor) {
+    auto body_a = std::static_pointer_cast<chrono::ChBody>(body_a_handle);
+    auto body_b = std::static_pointer_cast<chrono::ChBody>(body_b_handle);
+
+    chrono::ChFrame<> frame(chrono::ChVector3d(anchor.x, anchor.y, anchor.z),
+                            chrono::ChQuaterniond(1, 0, 0, 0));
+    auto link = chrono_types::make_shared<chrono::ChLinkLockSpherical>();
+    link->Initialize(body_a, body_b, frame);
+    m_impl->link = link;
     sim->add_link(std::static_pointer_cast<void>(m_impl->link));
 }
 

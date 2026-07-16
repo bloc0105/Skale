@@ -38,6 +38,7 @@ var _selected: SkaleBody = null
 var _body_counter  := 0
 var _joint_counter := 0
 var _updating_props := false   # guard against feedback loops
+var _show_joints   := true
 
 # ── Joint creation state ──────────────────────────────────────────────────────
 enum JointMode { NONE, PICKING_AXIS, SELECTING_A, SELECTING_B }
@@ -58,6 +59,18 @@ const COLOR_FLOOR    := Color(0.25, 0.25, 0.30)
 func _ready() -> void:
 	_build_world()
 	_build_ui()
+
+
+func _process(_delta: float) -> void:
+	if _mode == Mode.RUN:
+		_update_spring_visuals()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if key.pressed and not key.echo and key.keycode == KEY_DELETE:
+			_delete_selected()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -93,6 +106,29 @@ func _build_world() -> void:
 
 	# Default floor body (always present, not selectable)
 	_add_floor()
+
+	# World axis indicator at origin
+	_build_axis()
+
+
+func _build_axis() -> void:
+	# Three thin unlit bars: X=red, Y=green, Z=blue, each 1m long from origin.
+	var axes := [
+		[Vector3(0.5, 0, 0), Vector3(1.0, 0.02, 0.02), Color(1.0, 0.2, 0.2)],
+		[Vector3(0, 0.5, 0), Vector3(0.02, 1.0, 0.02), Color(0.2, 1.0, 0.2)],
+		[Vector3(0, 0, 0.5), Vector3(0.02, 0.02, 1.0), Color(0.2, 0.4, 1.0)],
+	]
+	for entry in axes:
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = entry[1]
+		mi.mesh = bm
+		mi.position = entry[0]
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = entry[2]
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = mat
+		add_child(mi)
 
 
 func _add_floor() -> void:
@@ -216,6 +252,19 @@ func _build_toolbar(root: Control) -> void:
 	# Spacer
 	var m := Label.new(); m.text = "  "; hbox.add_child(m)
 
+	# File buttons
+	var btn_save := Button.new()
+	btn_save.text = "Save"
+	btn_save.pressed.connect(_show_save_dialog)
+	hbox.add_child(btn_save)
+
+	var btn_load := Button.new()
+	btn_load.text = "Load"
+	btn_load.pressed.connect(_show_load_dialog)
+	hbox.add_child(btn_load)
+
+	hbox.add_child(VSeparator.new())
+
 	# Add-body buttons
 	var btn_box := Button.new()
 	btn_box.text = "+ Box"
@@ -251,6 +300,21 @@ func _build_toolbar(root: Control) -> void:
 	btn_weld.text = "+ Weld"
 	btn_weld.pressed.connect(_on_add_weld)
 	hbox.add_child(btn_weld)
+
+	var btn_motor := Button.new()
+	btn_motor.text = "+ Motor"
+	btn_motor.pressed.connect(_on_add_motor)
+	hbox.add_child(btn_motor)
+
+	var btn_actuator := Button.new()
+	btn_actuator.text = "+ Actuator"
+	btn_actuator.pressed.connect(_on_add_actuator)
+	hbox.add_child(btn_actuator)
+
+	var btn_ball := Button.new()
+	btn_ball.text = "+ Ball"
+	btn_ball.pressed.connect(_on_add_ball)
+	hbox.add_child(btn_ball)
 
 	_axis_buttons = HBoxContainer.new()
 	_axis_buttons.visible = false
@@ -289,6 +353,15 @@ func _build_toolbar(root: Control) -> void:
 	_btn_stop.disabled = true
 	_btn_stop.pressed.connect(_on_stop)
 	hbox.add_child(_btn_stop)
+
+	hbox.add_child(VSeparator.new())
+
+	var btn_joints := Button.new()
+	btn_joints.text = "Joints"
+	btn_joints.toggle_mode = true
+	btn_joints.button_pressed = true
+	btn_joints.toggled.connect(_on_toggle_joints)
+	hbox.add_child(btn_joints)
 
 
 func _build_props_panel(root: Control) -> void:
@@ -396,17 +469,23 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 		_joint_mode = JointMode.SELECTING_B
 		_set_mesh_color(body, Color(1.0, 0.35, 0.35))
 		match _joint_type:
-			"hinge":  _status_label.text = "  Click swinging body..."
-			"slider": _status_label.text = "  Click sliding body..."
-			"spring": _status_label.text = "  Click hanging body..."
-			"weld":   _status_label.text = "  Click body to weld..."
+			"hinge":    _status_label.text = "  Click swinging body..."
+			"slider":   _status_label.text = "  Click sliding body..."
+			"spring":   _status_label.text = "  Click hanging body..."
+			"weld":     _status_label.text = "  Click body to weld..."
+			"motor":    _status_label.text = "  Click driven body..."
+			"actuator": _status_label.text = "  Click moving body..."
+			"ball":     _status_label.text = "  Click pivoting body..."
 	elif _joint_mode == JointMode.SELECTING_B:
 		if body != _joint_body_a:
 			match _joint_type:
-				"hinge":  _create_hinge(_joint_body_a, body)
-				"slider": _create_slider(_joint_body_a, body)
-				"spring": _create_spring(_joint_body_a, body)
-				"weld":   _create_weld(_joint_body_a, body)
+				"hinge":    _create_hinge(_joint_body_a, body)
+				"slider":   _create_slider(_joint_body_a, body)
+				"spring":   _create_spring(_joint_body_a, body)
+				"weld":     _create_weld(_joint_body_a, body)
+				"motor":    _create_motor(_joint_body_a, body)
+				"actuator": _create_actuator(_joint_body_a, body)
+				"ball":     _create_ball(_joint_body_a, body)
 		_joint_mode = JointMode.NONE
 		_joint_body_a = null
 		_status_label.text = ""
@@ -526,6 +605,36 @@ func _on_add_spring() -> void:
 			btn.button_pressed = false
 
 
+func _on_add_motor() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_type = "motor"
+	_joint_mode = JointMode.PICKING_AXIS
+	_joint_body_a = null
+	_axis_buttons.visible = true
+	_status_label.text = "  Pick rotation axis, then click stator body..."
+
+
+func _on_add_actuator() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_type = "actuator"
+	_joint_mode = JointMode.PICKING_AXIS
+	_joint_body_a = null
+	_axis_buttons.visible = true
+	_status_label.text = "  Pick slide axis, then click anchor body..."
+
+
+func _on_add_ball() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	_joint_type = "ball"
+	_joint_mode = JointMode.SELECTING_A
+	_joint_body_a = null
+	_axis_buttons.visible = false
+	_status_label.text = "  Click socket body..."
+
+
 func _on_axis_picked(axis_name: String) -> void:
 	match axis_name:
 		"X": _joint_axis = Vector3(1, 0, 0)
@@ -538,10 +647,11 @@ func _on_axis_picked(axis_name: String) -> void:
 		if btn:
 			btn.button_pressed = (names[i] == axis_name)
 	_joint_mode = JointMode.SELECTING_A
-	if _joint_type == "hinge":
-		_status_label.text = "  Click pivot body..."
-	else:
-		_status_label.text = "  Click guide body (rail)..."
+	match _joint_type:
+		"hinge":    _status_label.text = "  Click pivot body..."
+		"motor":    _status_label.text = "  Click stator body..."
+		"actuator": _status_label.text = "  Click anchor body..."
+		_:          _status_label.text = "  Click guide body (rail)..."
 
 
 func _create_hinge(body_a: SkaleBody, body_b: SkaleBody) -> void:
@@ -574,6 +684,7 @@ func _attach_hinge_visual(hinge: SkaleHinge) -> void:
 	mat.albedo_color = Color(1.0, 0.75, 0.0)
 	mi.material_override = mat
 	hinge.add_child(mi)
+	mi.visible = _show_joints
 
 
 func _create_weld(body_a: SkaleBody, body_b: SkaleBody) -> void:
@@ -585,8 +696,11 @@ func _create_weld(body_a: SkaleBody, body_b: SkaleBody) -> void:
 	_sim.add_child(weld)
 	weld.body_a_path = weld.get_path_to(body_a)
 	weld.body_b_path = weld.get_path_to(body_b)
+	_attach_weld_visual(weld)
+	_select(body_b)
 
-	# Small white diamond to mark the weld point.
+
+func _attach_weld_visual(weld: SkaleFixed) -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Visual"
 	var box := BoxMesh.new()
@@ -597,8 +711,107 @@ func _create_weld(body_a: SkaleBody, body_b: SkaleBody) -> void:
 	mat.albedo_color = Color(1.0, 1.0, 1.0)
 	mi.material_override = mat
 	weld.add_child(mi)
+	mi.visible = _show_joints
 
+
+func _create_motor(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var motor := SkaleMotor.new()
+	motor.name = "Motor%d" % _joint_counter
+	motor.axis = _joint_axis
+	motor.anchor = body_a.position
+	motor.position = body_a.position
+
+	_sim.add_child(motor)
+	motor.body_a_path = motor.get_path_to(body_a)
+	motor.body_b_path = motor.get_path_to(body_b)
+	_attach_motor_visual(motor)
 	_select(body_b)
+
+
+func _attach_motor_visual(motor: SkaleMotor) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var cyl := CylinderMesh.new()
+	cyl.top_radius    = 0.15
+	cyl.bottom_radius = 0.15
+	cyl.height        = 0.06
+	mi.mesh = cyl
+	var axis := motor.axis
+	if axis.distance_to(Vector3(0, 1, 0)) > 0.01 and axis.distance_to(Vector3(0, -1, 0)) > 0.01:
+		mi.basis = Basis(Vector3(0, 1, 0).cross(axis).normalized(),
+		                 axis,
+		                 axis.cross(Vector3(0, 1, 0).cross(axis).normalized()))
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1.0, 0.45, 0.0)
+	mi.material_override = mat
+	motor.add_child(mi)
+	mi.visible = _show_joints
+
+
+func _create_actuator(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var actuator := SkaleActuator.new()
+	actuator.name = "Actuator%d" % _joint_counter
+	var anchor := (body_a.position + body_b.position) * 0.5
+	actuator.axis = _joint_axis
+	actuator.anchor = anchor
+	actuator.position = anchor
+
+	_sim.add_child(actuator)
+	actuator.body_a_path = actuator.get_path_to(body_a)
+	actuator.body_b_path = actuator.get_path_to(body_b)
+	_attach_actuator_visual(actuator)
+	_select(body_b)
+
+
+func _attach_actuator_visual(actuator: SkaleActuator) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var cyl := CylinderMesh.new()
+	cyl.top_radius    = 0.06
+	cyl.bottom_radius = 0.06
+	cyl.height        = 0.5
+	mi.mesh = cyl
+	var axis := actuator.axis
+	if axis.distance_to(Vector3(0, 1, 0)) > 0.01 and axis.distance_to(Vector3(0, -1, 0)) > 0.01:
+		mi.basis = Basis(Vector3(0, 1, 0).cross(axis).normalized(),
+		                 axis,
+		                 axis.cross(Vector3(0, 1, 0).cross(axis).normalized()))
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.2, 0.9, 0.1)
+	mi.material_override = mat
+	actuator.add_child(mi)
+	mi.visible = _show_joints
+
+
+func _create_ball(body_a: SkaleBody, body_b: SkaleBody) -> void:
+	_joint_counter += 1
+	var ball := SkaleBall.new()
+	ball.name = "Ball%d" % _joint_counter
+	var anchor := (body_a.position + body_b.position) * 0.5
+	ball.anchor = anchor
+	ball.position = anchor
+
+	_sim.add_child(ball)
+	ball.body_a_path = ball.get_path_to(body_a)
+	ball.body_b_path = ball.get_path_to(body_b)
+	_attach_ball_visual(ball)
+	_select(body_b)
+
+
+func _attach_ball_visual(ball: SkaleBall) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Visual"
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.12
+	sphere.height = 0.24
+	mi.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.2, 0.9)
+	mi.material_override = mat
+	ball.add_child(mi)
+	mi.visible = _show_joints
 
 
 func _create_spring(body_a: SkaleBody, body_b: SkaleBody) -> void:
@@ -640,6 +853,7 @@ func _attach_spring_visual(spring: SkaleSpring, pt_a: Vector3, pt_b: Vector3) ->
 	mat.albedo_color = Color(0.9, 0.3, 0.9)
 	mi.material_override = mat
 	spring.add_child(mi)
+	mi.visible = _show_joints
 
 
 func _create_slider(body_a: SkaleBody, body_b: SkaleBody) -> void:
@@ -679,6 +893,391 @@ func _attach_slider_visual(slider: SkaleSlider) -> void:
 	mat.albedo_color = Color(0.0, 0.80, 0.90)
 	mi.material_override = mat
 	slider.add_child(mi)
+	mi.visible = _show_joints
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Save / Load
+# ─────────────────────────────────────────────────────────────────────────────
+
+func _show_save_dialog() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	var dialog := FileDialog.new()
+	dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	dialog.add_filter("*.skale", "Skale Scene")
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	dialog.current_dir = OS.get_environment("HOME")
+	add_child(dialog)
+	dialog.file_selected.connect(func(path: String):
+		_save_scene(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+	dialog.popup_centered(Vector2i(800, 500))
+
+
+func _show_load_dialog() -> void:
+	if _mode != Mode.DESIGN:
+		return
+	var dialog := FileDialog.new()
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	dialog.add_filter("*.skale", "Skale Scene")
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	dialog.current_dir = OS.get_environment("HOME")
+	add_child(dialog)
+	dialog.file_selected.connect(func(path: String):
+		_load_scene(path)
+		dialog.queue_free()
+	)
+	dialog.canceled.connect(func(): dialog.queue_free())
+	dialog.popup_centered(Vector2i(800, 500))
+
+
+func _save_scene(path: String) -> void:
+	var bodies := []
+	var joints := []
+
+	for i in _sim.get_child_count():
+		var child := _sim.get_child(i)
+
+		if child is SkaleBody:
+			var body := child as SkaleBody
+			if body.name == "Floor":
+				continue
+			bodies.append({
+				"name":       body.name,
+				"shape_type": body.shape_type,
+				"position":   [body.position.x, body.position.y, body.position.z],
+				"box_size":   [body.box_size.x, body.box_size.y, body.box_size.z],
+				"radius":     body.radius,
+				"height":     body.height,
+				"density":    body.density,
+				"fixed":      body.get_fixed(),
+				"friction":   body.friction,
+				"restitution": body.restitution,
+			})
+
+		elif child is SkaleHinge:
+			var h := child as SkaleHinge
+			var na := child.get_node_or_null(h.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(h.body_b_path) as SkaleBody
+			joints.append({
+				"type":   "hinge",
+				"name":   child.name,
+				"body_a": na.name if na else "",
+				"body_b": nb.name if nb else "",
+				"anchor": [h.anchor.x, h.anchor.y, h.anchor.z],
+				"axis":   [h.axis.x,   h.axis.y,   h.axis.z],
+			})
+
+		elif child is SkaleSlider:
+			var s := child as SkaleSlider
+			var na := child.get_node_or_null(s.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(s.body_b_path) as SkaleBody
+			joints.append({
+				"type":   "slider",
+				"name":   child.name,
+				"body_a": na.name if na else "",
+				"body_b": nb.name if nb else "",
+				"anchor": [s.anchor.x, s.anchor.y, s.anchor.z],
+				"axis":   [s.axis.x,   s.axis.y,   s.axis.z],
+			})
+
+		elif child is SkaleSpring:
+			var sp := child as SkaleSpring
+			var na := child.get_node_or_null(sp.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(sp.body_b_path) as SkaleBody
+			joints.append({
+				"type":     "spring",
+				"name":     child.name,
+				"body_a":   na.name if na else "",
+				"body_b":   nb.name if nb else "",
+				"stiffness": sp.stiffness,
+				"damping":   sp.damping,
+			})
+
+		elif child is SkaleFixed:
+			var f := child as SkaleFixed
+			var na := child.get_node_or_null(f.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(f.body_b_path) as SkaleBody
+			joints.append({
+				"type":   "weld",
+				"name":   child.name,
+				"body_a": na.name if na else "",
+				"body_b": nb.name if nb else "",
+			})
+
+		elif child is SkaleMotor:
+			var mo := child as SkaleMotor
+			var na := child.get_node_or_null(mo.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(mo.body_b_path) as SkaleBody
+			joints.append({
+				"type":   "motor",
+				"name":   child.name,
+				"body_a": na.name if na else "",
+				"body_b": nb.name if nb else "",
+				"anchor": [mo.anchor.x, mo.anchor.y, mo.anchor.z],
+				"axis":   [mo.axis.x,   mo.axis.y,   mo.axis.z],
+				"speed":  mo.speed,
+			})
+
+		elif child is SkaleActuator:
+			var ac := child as SkaleActuator
+			var na := child.get_node_or_null(ac.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(ac.body_b_path) as SkaleBody
+			joints.append({
+				"type":   "actuator",
+				"name":   child.name,
+				"body_a": na.name if na else "",
+				"body_b": nb.name if nb else "",
+				"anchor": [ac.anchor.x, ac.anchor.y, ac.anchor.z],
+				"axis":   [ac.axis.x,   ac.axis.y,   ac.axis.z],
+				"speed":  ac.speed,
+			})
+
+		elif child is SkaleBall:
+			var bl := child as SkaleBall
+			var na := child.get_node_or_null(bl.body_a_path) as SkaleBody
+			var nb := child.get_node_or_null(bl.body_b_path) as SkaleBody
+			joints.append({
+				"type":   "ball",
+				"name":   child.name,
+				"body_a": na.name if na else "",
+				"body_b": nb.name if nb else "",
+				"anchor": [bl.anchor.x, bl.anchor.y, bl.anchor.z],
+			})
+
+	var data := {"version": 1, "bodies": bodies, "joints": joints}
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(data, "\t"))
+		file.close()
+
+
+func _load_scene(path: String) -> void:
+	if _mode != Mode.DESIGN:
+		return
+
+	var file := FileAccess.open(path, FileAccess.READ)
+	if not file:
+		return
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not data:
+		return
+
+	# Clear everything except the Floor.
+	_select(null)
+	for i in range(_sim.get_child_count() - 1, -1, -1):
+		var child := _sim.get_child(i)
+		if child is SkaleBody and (child as SkaleBody).name == "Floor":
+			continue
+		child.queue_free()
+
+	await get_tree().process_frame
+
+	_body_counter  = 0
+	_joint_counter = 0
+
+	# Recreate bodies.
+	for bd in data["bodies"]:
+		var body := SkaleBody.new()
+		body.name       = str(bd["name"])
+		body.shape_type = int(bd["shape_type"])
+		var p: Array = bd["position"]
+		body.position   = Vector3(p[0], p[1], p[2])
+		var bs: Array = bd["box_size"]
+		body.box_size   = Vector3(bs[0], bs[1], bs[2])
+		body.radius      = float(bd["radius"])
+		body.height      = float(bd["height"])
+		body.density     = float(bd["density"])
+		body.set_fixed(bool(bd["fixed"]))
+		body.friction    = float(bd["friction"])
+		body.restitution = float(bd["restitution"])
+		_sim.add_child(body)
+		var col := COLOR_FIXED if body.get_fixed() else COLOR_DYNAMIC
+		_attach_mesh(body, col)
+		_attach_picker(body)
+		_body_counter += 1
+
+	# Recreate joints.
+	for jd in data["joints"]:
+		var body_a := _sim.get_node_or_null(str(jd["body_a"])) as SkaleBody
+		var body_b := _sim.get_node_or_null(str(jd["body_b"])) as SkaleBody
+		if not body_a or not body_b:
+			continue
+		_joint_counter += 1
+
+		match str(jd["type"]):
+			"hinge":
+				var hinge := SkaleHinge.new()
+				hinge.name = str(jd["name"])
+				var a: Array = jd["anchor"]
+				var ax: Array = jd["axis"]
+				hinge.anchor   = Vector3(a[0], a[1], a[2])
+				hinge.axis     = Vector3(ax[0], ax[1], ax[2])
+				hinge.position = hinge.anchor
+				_sim.add_child(hinge)
+				hinge.body_a_path = hinge.get_path_to(body_a)
+				hinge.body_b_path = hinge.get_path_to(body_b)
+				_attach_hinge_visual(hinge)
+
+			"slider":
+				var slider := SkaleSlider.new()
+				slider.name = str(jd["name"])
+				var a: Array = jd["anchor"]
+				var ax: Array = jd["axis"]
+				slider.anchor   = Vector3(a[0], a[1], a[2])
+				slider.axis     = Vector3(ax[0], ax[1], ax[2])
+				slider.position = slider.anchor
+				_sim.add_child(slider)
+				slider.body_a_path = slider.get_path_to(body_a)
+				slider.body_b_path = slider.get_path_to(body_b)
+				_attach_slider_visual(slider)
+
+			"spring":
+				var spring := SkaleSpring.new()
+				spring.name      = str(jd["name"])
+				spring.stiffness = float(jd["stiffness"])
+				spring.damping   = float(jd["damping"])
+				spring.position  = (body_a.position + body_b.position) * 0.5
+				_sim.add_child(spring)
+				spring.body_a_path = spring.get_path_to(body_a)
+				spring.body_b_path = spring.get_path_to(body_b)
+				_attach_spring_visual(spring, body_a.position, body_b.position)
+
+			"weld":
+				var weld := SkaleFixed.new()
+				weld.name     = str(jd["name"])
+				weld.position = (body_a.position + body_b.position) * 0.5
+				_sim.add_child(weld)
+				weld.body_a_path = weld.get_path_to(body_a)
+				weld.body_b_path = weld.get_path_to(body_b)
+				_attach_weld_visual(weld)
+
+			"motor":
+				var motor := SkaleMotor.new()
+				motor.name = str(jd["name"])
+				var a: Array = jd["anchor"]
+				var ax: Array = jd["axis"]
+				motor.anchor   = Vector3(a[0], a[1], a[2])
+				motor.axis     = Vector3(ax[0], ax[1], ax[2])
+				motor.speed    = float(jd["speed"])
+				motor.position = motor.anchor
+				_sim.add_child(motor)
+				motor.body_a_path = motor.get_path_to(body_a)
+				motor.body_b_path = motor.get_path_to(body_b)
+				_attach_motor_visual(motor)
+
+			"actuator":
+				var actuator := SkaleActuator.new()
+				actuator.name = str(jd["name"])
+				var a: Array = jd["anchor"]
+				var ax: Array = jd["axis"]
+				actuator.anchor   = Vector3(a[0], a[1], a[2])
+				actuator.axis     = Vector3(ax[0], ax[1], ax[2])
+				actuator.speed    = float(jd["speed"])
+				actuator.position = actuator.anchor
+				_sim.add_child(actuator)
+				actuator.body_a_path = actuator.get_path_to(body_a)
+				actuator.body_b_path = actuator.get_path_to(body_b)
+				_attach_actuator_visual(actuator)
+
+			"ball":
+				var ball := SkaleBall.new()
+				ball.name = str(jd["name"])
+				var a: Array = jd["anchor"]
+				ball.anchor   = Vector3(a[0], a[1], a[2])
+				ball.position = ball.anchor
+				_sim.add_child(ball)
+				ball.body_a_path = ball.get_path_to(body_a)
+				ball.body_b_path = ball.get_path_to(body_b)
+				_attach_ball_visual(ball)
+
+
+func _delete_selected() -> void:
+	if not _selected or _mode != Mode.DESIGN:
+		return
+	if _selected.name == "Floor":
+		return
+	var body := _selected
+	_select(null)
+	# Remove any joints that reference this body before freeing it.
+	for i in range(_sim.get_child_count() - 1, -1, -1):
+		var child := _sim.get_child(i)
+		var path_a := NodePath()
+		var path_b := NodePath()
+		if child is SkaleHinge:
+			path_a = (child as SkaleHinge).body_a_path
+			path_b = (child as SkaleHinge).body_b_path
+		elif child is SkaleSlider:
+			path_a = (child as SkaleSlider).body_a_path
+			path_b = (child as SkaleSlider).body_b_path
+		elif child is SkaleSpring:
+			path_a = (child as SkaleSpring).body_a_path
+			path_b = (child as SkaleSpring).body_b_path
+		elif child is SkaleFixed:
+			path_a = (child as SkaleFixed).body_a_path
+			path_b = (child as SkaleFixed).body_b_path
+		elif child is SkaleMotor:
+			path_a = (child as SkaleMotor).body_a_path
+			path_b = (child as SkaleMotor).body_b_path
+		elif child is SkaleActuator:
+			path_a = (child as SkaleActuator).body_a_path
+			path_b = (child as SkaleActuator).body_b_path
+		elif child is SkaleBall:
+			path_a = (child as SkaleBall).body_a_path
+			path_b = (child as SkaleBall).body_b_path
+		else:
+			continue
+		if child.get_node_or_null(path_a) == body or child.get_node_or_null(path_b) == body:
+			child.queue_free()
+	body.queue_free()
+
+
+func _update_spring_visuals() -> void:
+	for i in _sim.get_child_count():
+		var spring := _sim.get_child(i) as SkaleSpring
+		if not spring:
+			continue
+		var node_a := spring.get_node_or_null(spring.body_a_path) as SkaleBody
+		var node_b := spring.get_node_or_null(spring.body_b_path) as SkaleBody
+		if not node_a or not node_b:
+			continue
+		var mi := spring.get_node_or_null("Visual") as MeshInstance3D
+		if not mi:
+			continue
+		var pt_a := node_a.global_position
+		var pt_b := node_b.global_position
+		var diff := pt_b - pt_a
+		var length := diff.length()
+		if length < 0.001:
+			continue
+		spring.global_position = (pt_a + pt_b) * 0.5
+		var cyl := mi.mesh as CylinderMesh
+		if cyl:
+			cyl.height = length
+		var dir := diff.normalized()
+		var up := Vector3(0, 1, 0)
+		var right := up.cross(dir) if abs(dir.dot(up)) < 0.999 else Vector3(1, 0, 0)
+		right = right.normalized()
+		mi.global_basis = Basis(right, dir, right.cross(dir).normalized())
+
+
+func _on_toggle_joints(pressed: bool) -> void:
+	_show_joints = pressed
+	_set_joints_visible(pressed)
+
+
+func _set_joints_visible(show: bool) -> void:
+	for i in _sim.get_child_count():
+		var child := _sim.get_child(i)
+		if child is SkaleBody:
+			continue
+		var visual := child.get_node_or_null("Visual") as MeshInstance3D
+		if visual:
+			visual.visible = show
 
 
 func _restore_body_colors() -> void:
