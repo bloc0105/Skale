@@ -46,6 +46,7 @@ var _joint_mode   := JointMode.NONE
 var _joint_body_a: SkaleBody = null
 var _joint_axis   := Vector3(0, 0, 1)   # default: Z axis, pendulum swings in XY
 var _joint_type   := "hinge"            # "hinge", "slider", "spring", or "weld"
+var _joint_rail_node: Node3D = null     # temporary slider rail preview
 var _status_label: Label
 var _axis_buttons: HBoxContainer
 
@@ -69,8 +70,18 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
-		if key.pressed and not key.echo and key.keycode == KEY_DELETE:
-			_delete_selected()
+		if key.pressed and not key.echo:
+			match key.keycode:
+				KEY_DELETE:
+					_delete_selected()
+				KEY_ESCAPE:
+					if _joint_mode != JointMode.NONE:
+						_clear_joint_rail()
+						_joint_mode = JointMode.NONE
+						_joint_body_a = null
+						_status_label.text = ""
+						_axis_buttons.visible = false
+						_restore_body_colors()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -496,6 +507,8 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 		_joint_body_a = body
 		_joint_mode = JointMode.SELECTING_B
 		_set_mesh_color(body, Color(1.0, 0.35, 0.35))
+		if _joint_type == "slider":
+			_show_slider_rail()
 		match _joint_type:
 			"hinge":    _status_label.text = "  Click swinging body..."
 			"slider":   _status_label.text = "  Click sliding body..."
@@ -514,6 +527,7 @@ func _on_body_clicked(_cam, event: InputEvent, _pos, _norm, _idx, body: SkaleBod
 				"motor":    _create_motor(_joint_body_a, body)
 				"actuator": _create_actuator(_joint_body_a, body)
 				"ball":     _create_ball(_joint_body_a, body)
+		_clear_joint_rail()
 		_joint_mode = JointMode.NONE
 		_joint_body_a = null
 		_status_label.text = ""
@@ -1303,9 +1317,143 @@ func _set_joints_visible(show: bool) -> void:
 		var child := _sim.get_child(i)
 		if child is SkaleBody:
 			continue
-		var visual := child.get_node_or_null("Visual") as MeshInstance3D
+		var visual := child.get_node_or_null("Visual") as Node3D
 		if visual:
 			visual.visible = show
+
+
+# ── Joint visual helpers ──────────────────────────────────────────────────────
+
+# Returns a Basis whose Y column points along dir.
+func _axis_basis(dir: Vector3) -> Basis:
+	var d := dir.normalized()
+	var up := Vector3(0, 1, 0)
+	if d.distance_to(up) < 0.01:
+		return Basis.IDENTITY
+	if d.distance_to(-up) < 0.01:
+		return Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, -1))
+	var right := up.cross(d).normalized()
+	return Basis(right, d, d.cross(right).normalized())
+
+
+# Arrow pointing +Y. Caller applies _axis_basis to orient.
+func _make_arrow_y(length: float, color: Color, bidirectional: bool = false) -> Node3D:
+	var root := Node3D.new()
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+	if bidirectional:
+		var shaft := MeshInstance3D.new()
+		var sm := CylinderMesh.new()
+		sm.top_radius = 0.012; sm.bottom_radius = 0.012; sm.height = length
+		shaft.mesh = sm; shaft.material_override = mat
+		root.add_child(shaft)
+
+		for sign in [1, -1]:
+			var head := MeshInstance3D.new()
+			var hm := CylinderMesh.new()
+			hm.top_radius = 0.0 if sign > 0 else 0.045
+			hm.bottom_radius = 0.045 if sign > 0 else 0.0
+			hm.height = 0.10
+			head.mesh = hm; head.material_override = mat
+			head.position = Vector3(0, sign * (length * 0.5 + 0.05), 0)
+			root.add_child(head)
+	else:
+		var shaft := MeshInstance3D.new()
+		var sm := CylinderMesh.new()
+		sm.top_radius = 0.012; sm.bottom_radius = 0.012; sm.height = length
+		shaft.mesh = sm; shaft.material_override = mat
+		shaft.position = Vector3(0, length * 0.5, 0)
+		root.add_child(shaft)
+
+		var head := MeshInstance3D.new()
+		var hm := CylinderMesh.new()
+		hm.top_radius = 0.0; hm.bottom_radius = 0.045; hm.height = 0.10
+		head.mesh = hm; head.material_override = mat
+		head.position = Vector3(0, length + 0.05, 0)
+		root.add_child(head)
+
+	return root
+
+
+# Flat torus ring in XZ plane (perp to Y). Caller applies _axis_basis to orient.
+func _make_ring_y(avg_radius: float, width: float, color: Color) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = avg_radius - width * 0.5
+	tm.outer_radius = avg_radius + width * 0.5
+	tm.ring_segments = 48
+	mi.mesh = tm
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.material_override = mat
+	return mi
+
+
+# Two thin tubes: red to pos_a, blue to pos_b, in the joint's local space.
+func _make_body_tubes(joint: Node3D, pos_a: Vector3, pos_b: Vector3) -> Node3D:
+	var root := Node3D.new()
+	for pair in [[pos_a, Color(1.0, 0.35, 0.35)], [pos_b, Color(0.35, 0.65, 1.0)]]:
+		var world_pos: Vector3 = pair[0]
+		var color: Color = pair[1]
+		var local := joint.to_local(world_pos)
+		var length := local.length()
+		if length < 0.05:
+			continue
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.012; cm.bottom_radius = 0.012; cm.height = length
+		mi.mesh = cm
+		mi.basis = _axis_basis(local)
+		mi.position = local * 0.5
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = mat
+		root.add_child(mi)
+	return root
+
+
+func _show_slider_rail() -> void:
+	_clear_joint_rail()
+	var root := Node3D.new()
+	root.name = "SliderRail"
+	root.position = _joint_body_a.position
+	root.basis = _axis_basis(_joint_axis)
+
+	var teal := Color(0.0, 0.80, 0.90)
+	# [y_offset, height, alpha]
+	var segments := [
+		[0.0,   1.8,  0.65],
+		[ 1.3,  0.6,  0.22],
+		[-1.3,  0.6,  0.22],
+		[ 1.75, 0.3,  0.06],
+		[-1.75, 0.3,  0.06],
+	]
+	for seg in segments:
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.035; cm.bottom_radius = 0.035; cm.height = seg[1]
+		mi.mesh = cm
+		mi.position = Vector3(0, seg[0], 0)
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(teal.r, teal.g, teal.b, seg[2])
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mi.material_override = mat
+		root.add_child(mi)
+
+	_sim.add_child(root)
+	_joint_rail_node = root
+
+
+func _clear_joint_rail() -> void:
+	if is_instance_valid(_joint_rail_node):
+		_joint_rail_node.queue_free()
+	_joint_rail_node = null
 
 
 func _restore_body_colors() -> void:
@@ -1394,6 +1542,7 @@ func _on_pause() -> void:
 
 func _on_stop() -> void:
 	_mode = Mode.DESIGN
+	_clear_joint_rail()
 	_joint_mode = JointMode.NONE
 	_joint_body_a = null
 	_status_label.text = ""
