@@ -255,11 +255,13 @@ func _build_toolbar(root: Control) -> void:
 	# File buttons
 	var btn_save := Button.new()
 	btn_save.text = "Save"
+	btn_save.tooltip_text = "Save the current scene to a .skale file."
 	btn_save.pressed.connect(_show_save_dialog)
 	hbox.add_child(btn_save)
 
 	var btn_load := Button.new()
 	btn_load.text = "Load"
+	btn_load.tooltip_text = "Load a .skale scene file. Clears the current scene first."
 	btn_load.pressed.connect(_show_load_dialog)
 	hbox.add_child(btn_load)
 
@@ -268,51 +270,61 @@ func _build_toolbar(root: Control) -> void:
 	# Add-body buttons
 	var btn_box := Button.new()
 	btn_box.text = "+ Box"
+	btn_box.tooltip_text = "Add a box body. Default 1×1×1 m, density 1000 kg/m³.\nEdit size and properties in the panel on the right."
 	btn_box.pressed.connect(_on_add_box)
 	hbox.add_child(btn_box)
 
 	var btn_cyl := Button.new()
 	btn_cyl.text = "+ Cylinder"
+	btn_cyl.tooltip_text = "Add a cylinder body. Default radius 0.5 m, height 1 m.\nChrono aligns the cylinder axis with Y."
 	btn_cyl.pressed.connect(_on_add_cylinder)
 	hbox.add_child(btn_cyl)
 
 	var btn_sph := Button.new()
 	btn_sph.text = "+ Sphere"
+	btn_sph.tooltip_text = "Add a sphere body. Default radius 0.5 m."
 	btn_sph.pressed.connect(_on_add_sphere)
 	hbox.add_child(btn_sph)
 
 	var btn_hinge := Button.new()
 	btn_hinge.text = "+ Hinge"
+	btn_hinge.tooltip_text = "Revolute joint — one rotational DOF around a fixed axis.\nWorkflow: pick axis (X/Y/Z) → click pivot body → click swinging body.\nExpected: swinging body rotates freely around the axis; pivot body stays fixed."
 	btn_hinge.pressed.connect(_on_add_hinge)
 	hbox.add_child(btn_hinge)
 
 	var btn_slider := Button.new()
 	btn_slider.text = "+ Slider"
+	btn_slider.tooltip_text = "Prismatic joint — one translational DOF along a fixed axis.\nWorkflow: pick axis → click guide body (rail) → click sliding body.\nExpected: sliding body moves only along the chosen axis; no rotation."
 	btn_slider.pressed.connect(_on_add_slider)
 	hbox.add_child(btn_slider)
 
 	var btn_spring := Button.new()
 	btn_spring.text = "+ Spring"
+	btn_spring.tooltip_text = "Spring-damper between two bodies.\nWorkflow: click anchor body → click hanging body.\nRest length is set from initial distance. Default stiffness 2000 N/m, damping 10 Ns/m.\nExpected: hanging body oscillates up and down."
 	btn_spring.pressed.connect(_on_add_spring)
 	hbox.add_child(btn_spring)
 
 	var btn_weld := Button.new()
 	btn_weld.text = "+ Weld"
+	btn_weld.tooltip_text = "Fixed joint — locks two bodies together at their current relative pose.\nWorkflow: click first body → click second body.\nExpected: the two bodies move as one rigid object."
 	btn_weld.pressed.connect(_on_add_weld)
 	hbox.add_child(btn_weld)
 
 	var btn_motor := Button.new()
 	btn_motor.text = "+ Motor"
+	btn_motor.tooltip_text = "Rotational motor — drives a body at constant angular speed (default 1 rad/s ≈ 9.5 RPM).\nWorkflow: pick rotation axis → click stator body (fixed reference) → click driven body.\nExpected: driven body rotates continuously around the axis."
 	btn_motor.pressed.connect(_on_add_motor)
 	hbox.add_child(btn_motor)
 
 	var btn_actuator := Button.new()
 	btn_actuator.text = "+ Actuator"
+	btn_actuator.tooltip_text = "Linear actuator — drives a body at constant speed along an axis (default 0.5 m/s).\nWorkflow: pick slide axis → click anchor body → click moving body.\nExpected: moving body translates along the axis at constant speed."
 	btn_actuator.pressed.connect(_on_add_actuator)
 	hbox.add_child(btn_actuator)
 
 	var btn_ball := Button.new()
 	btn_ball.text = "+ Ball"
+	btn_ball.tooltip_text = "Ball (spherical) joint — 3 rotational DOFs, no translation.\nWorkflow: click socket body → click ball body.\nExpected: ball body can rotate freely in any direction around the anchor point but cannot move away from it."
 	btn_ball.pressed.connect(_on_add_ball)
 	hbox.add_child(btn_ball)
 
@@ -339,17 +351,20 @@ func _build_toolbar(root: Control) -> void:
 	# Playback
 	_btn_play = Button.new()
 	_btn_play.text = "▶  Play"
+	_btn_play.tooltip_text = "Start the physics simulation. Bodies begin moving under gravity and constraints.\nThe scene cannot be edited while running.\nIf paused, resumes from the paused state."
 	_btn_play.pressed.connect(_on_play)
 	hbox.add_child(_btn_play)
 
 	_btn_pause = Button.new()
 	_btn_pause.text = "⏸  Pause"
+	_btn_pause.tooltip_text = "Freeze the simulation at the current instant.\nPress Play to resume from this point."
 	_btn_pause.disabled = true
 	_btn_pause.pressed.connect(_on_pause)
 	hbox.add_child(_btn_pause)
 
 	_btn_stop = Button.new()
 	_btn_stop.text = "⏹  Stop"
+	_btn_stop.tooltip_text = "End the simulation and reset all bodies to their design positions.\nThe scene becomes editable again."
 	_btn_stop.disabled = true
 	_btn_stop.pressed.connect(_on_stop)
 	hbox.add_child(_btn_stop)
@@ -358,6 +373,7 @@ func _build_toolbar(root: Control) -> void:
 
 	var btn_joints := Button.new()
 	btn_joints.text = "Joints"
+	btn_joints.tooltip_text = "Toggle visibility of joint gizmos (spheres, cylinders, etc.).\nHiding them gives a clean view of just the bodies.\nPhysics are unaffected — joints still work when hidden."
 	btn_joints.toggle_mode = true
 	btn_joints.button_pressed = true
 	btn_joints.toggled.connect(_on_toggle_joints)
@@ -392,35 +408,47 @@ func _build_props_panel(root: Control) -> void:
 	vbox.add_child(_prop_panel)
 
 	_prop_pos_x = _add_spinbox_row(_prop_panel, "Pos X", -50.0, 50.0)
+	_prop_pos_x.tooltip_text = "X position of the body in world space (metres)."
 	_prop_pos_y = _add_spinbox_row(_prop_panel, "Pos Y", -50.0, 50.0)
+	_prop_pos_y.tooltip_text = "Y position of the body in world space (metres). Y is up."
 	_prop_pos_z = _add_spinbox_row(_prop_panel, "Pos Z", -50.0, 50.0)
+	_prop_pos_z.tooltip_text = "Z position of the body in world space (metres)."
 
 	_prop_panel.add_child(HSeparator.new())
 
 	_prop_size_x = _add_spinbox_row(_prop_panel, "Size X", 0.1, 20.0)
+	_prop_size_x.tooltip_text = "Width of the box along the X axis (metres)."
 	_prop_size_row_x = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
 	_prop_size_y = _add_spinbox_row(_prop_panel, "Size Y", 0.1, 20.0)
+	_prop_size_y.tooltip_text = "Height of the box along the Y axis (metres)."
 	_prop_size_row_y = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
 	_prop_size_z = _add_spinbox_row(_prop_panel, "Size Z", 0.1, 20.0)
+	_prop_size_z.tooltip_text = "Depth of the box along the Z axis (metres)."
 	_prop_size_row_z = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
 	_prop_radius = _add_spinbox_row(_prop_panel, "Radius", 0.05, 10.0)
+	_prop_radius.tooltip_text = "Radius of the cylinder or sphere (metres)."
 	_prop_radius_row = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
 	_prop_height = _add_spinbox_row(_prop_panel, "Height", 0.1, 20.0)
+	_prop_height.tooltip_text = "Height of the cylinder along its Y axis (metres)."
 	_prop_height_row = _prop_panel.get_child(_prop_panel.get_child_count() - 1)
 	_prop_density = _add_spinbox_row(_prop_panel, "Density", 1.0, 100000.0)
 	_prop_density.step = 10.0
+	_prop_density.tooltip_text = "Mass per unit volume (kg/m³). Mass = density × volume.\nWater ≈ 1000, steel ≈ 7800, wood ≈ 500."
 
 	var fixed_row := HBoxContainer.new()
 	var fixed_lbl := Label.new(); fixed_lbl.text = "Fixed"
 	_prop_fixed = CheckBox.new()
+	_prop_fixed.tooltip_text = "When checked, the body is pinned in place and cannot move.\nUse for walls, floors, anchor points, and motor stators."
 	fixed_row.add_child(fixed_lbl)
 	fixed_row.add_child(_prop_fixed)
 	_prop_panel.add_child(fixed_row)
 
 	_prop_friction    = _add_spinbox_row(_prop_panel, "Friction",    0.0, 2.0)
 	_prop_friction.step = 0.05
+	_prop_friction.tooltip_text = "Surface friction coefficient (dimensionless).\n0 = frictionless ice, 0.5 = default, 1.0+ = very grippy rubber."
 	_prop_restitution = _add_spinbox_row(_prop_panel, "Restitution", 0.0, 1.0)
 	_prop_restitution.step = 0.05
+	_prop_restitution.tooltip_text = "Bounciness on collision (0–1).\n0 = no bounce (clay), 0.5 = moderate, 1.0 = perfectly elastic (ideal ball)."
 
 	# Wire signals
 	_prop_pos_x.value_changed.connect(func(_v): _apply_props())
