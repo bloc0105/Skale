@@ -1328,9 +1328,13 @@ func _update_slider_visuals() -> void:
 		var slider := _sim.get_child(i) as SkaleSlider
 		if not slider:
 			continue
+		var node_a := slider.get_node_or_null(slider.body_a_path) as SkaleBody
 		var node_b := slider.get_node_or_null(slider.body_b_path) as SkaleBody
-		if not node_b:
+		if not node_a or not node_b:
 			continue
+		var mid := (node_a.global_position + node_b.global_position) * 0.5
+		slider.anchor = mid
+		slider.global_position = mid
 		var container := slider.get_node_or_null("Visual") as Node3D
 		if not container or container.get_child_count() == 0:
 			continue
