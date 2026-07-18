@@ -766,8 +766,9 @@ func _update_hinge_visuals() -> void:
 		if not mi:
 			continue
 		if hinge.has_meta("anchor_offset"):
-			hinge.global_position = node_a.global_position + \
-				(hinge.get_meta("anchor_offset") as Vector3)
+			var new_pos := node_a.global_position + (hinge.get_meta("anchor_offset") as Vector3)
+			hinge.global_position = new_pos
+			hinge.anchor = new_pos
 		_build_hinge_circle(mi, hinge, node_b.global_position)
 
 
