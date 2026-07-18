@@ -62,6 +62,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	_update_slider_visuals()
 	if _mode == Mode.RUN:
 		_update_spring_visuals()
 
@@ -1278,6 +1279,35 @@ func _delete_selected() -> void:
 		if child.get_node_or_null(path_a) == body or child.get_node_or_null(path_b) == body:
 			child.queue_free()
 	body.queue_free()
+
+
+func _update_slider_visuals() -> void:
+	for i in _sim.get_child_count():
+		var slider := _sim.get_child(i) as SkaleSlider
+		if not slider:
+			continue
+		var node_a := slider.get_node_or_null(slider.body_a_path) as SkaleBody
+		var node_b := slider.get_node_or_null(slider.body_b_path) as SkaleBody
+		if not node_a or not node_b:
+			continue
+		var container := slider.get_node_or_null("Visual") as Node3D
+		if not container or container.get_child_count() == 0:
+			continue
+		var mi := container.get_child(0) as MeshInstance3D
+		if not mi:
+			continue
+		var pt_a := node_a.global_position
+		var pt_b := node_b.global_position
+		var diff := pt_a - pt_b
+		var length := diff.length()
+		if length < 0.01:
+			continue
+		slider.global_position = (pt_a + pt_b) * 0.5
+		var cyl := mi.mesh as CylinderMesh
+		if cyl:
+			cyl.height = length
+		mi.position = Vector3.ZERO
+		mi.global_basis = _axis_basis(diff)
 
 
 func _update_spring_visuals() -> void:
