@@ -63,6 +63,8 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_update_slider_visuals()
+	if _mode == Mode.DESIGN:
+		_update_hinge_visuals()
 	if _mode == Mode.RUN:
 		_update_spring_visuals()
 
@@ -707,22 +709,61 @@ func _create_hinge(body_a: SkaleBody, body_b: SkaleBody) -> void:
 	hinge.body_a_path = hinge.get_path_to(body_a)
 	hinge.body_b_path = hinge.get_path_to(body_b)
 
-	_attach_hinge_visual(hinge)
+	_attach_hinge_visual(hinge, body_b.position)
 	_select(body_b)
 
 
-func _attach_hinge_visual(hinge: SkaleHinge) -> void:
+func _attach_hinge_visual(hinge: SkaleHinge, pos_b: Vector3) -> void:
+	var container := Node3D.new()
+	container.name = "Visual"
+
 	var mi := MeshInstance3D.new()
-	mi.name = "Visual"
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.12
-	sphere.height = 0.24
-	mi.mesh = sphere
+	mi.name = "Circle"
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1.0, 0.75, 0.0)
+	mat.albedo_color = Color(1, 1, 1)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mi.material_override = mat
-	hinge.add_child(mi)
-	mi.visible = _show_joints
+	_build_hinge_circle(mi, hinge, pos_b)
+
+	container.add_child(mi)
+	hinge.add_child(container)
+	container.visible = _show_joints
+
+
+func _build_hinge_circle(mi: MeshInstance3D, hinge: SkaleHinge, pos_b: Vector3) -> void:
+	var axis   := hinge.axis.normalized()
+	var anchor := hinge.global_position
+	var foot   := anchor + axis * (pos_b - anchor).dot(axis)
+	var radius := (pos_b - foot).length()
+
+	var im := ImmediateMesh.new()
+	if radius > 0.05:
+		var perp  := (pos_b - foot).normalized()
+		var perp2 := axis.cross(perp).normalized()
+		im.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+		for i in 65:
+			var angle   := float(i) / 64.0 * TAU
+			var p_world := foot + (cos(angle) * perp + sin(angle) * perp2) * radius
+			im.surface_add_vertex(hinge.to_local(p_world))
+		im.surface_end()
+	mi.mesh = im
+
+
+func _update_hinge_visuals() -> void:
+	for i in _sim.get_child_count():
+		var hinge := _sim.get_child(i) as SkaleHinge
+		if not hinge:
+			continue
+		var node_b := hinge.get_node_or_null(hinge.body_b_path) as SkaleBody
+		if not node_b:
+			continue
+		var container := hinge.get_node_or_null("Visual") as Node3D
+		if not container:
+			continue
+		var mi := container.get_node_or_null("Circle") as MeshInstance3D
+		if not mi:
+			continue
+		_build_hinge_circle(mi, hinge, node_b.global_position)
 
 
 func _create_weld(body_a: SkaleBody, body_b: SkaleBody) -> void:
@@ -1160,7 +1201,7 @@ func _load_scene(path: String) -> void:
 				_sim.add_child(hinge)
 				hinge.body_a_path = hinge.get_path_to(body_a)
 				hinge.body_b_path = hinge.get_path_to(body_b)
-				_attach_hinge_visual(hinge)
+				_attach_hinge_visual(hinge, body_b.position)
 
 			"slider":
 				var slider := SkaleSlider.new()
