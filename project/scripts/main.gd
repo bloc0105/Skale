@@ -908,29 +908,34 @@ func _create_slider(body_a: SkaleBody, body_b: SkaleBody) -> void:
 	slider.body_a_path = slider.get_path_to(body_a)
 	slider.body_b_path = slider.get_path_to(body_b)
 
-	_attach_slider_visual(slider, body_b.position)
+	_attach_slider_visual(slider, body_a.position, body_b.position)
 	_select(body_b)
 
 
-func _attach_slider_visual(slider: SkaleSlider, pos_b: Vector3) -> void:
+func _attach_slider_visual(slider: SkaleSlider, pos_a: Vector3, pos_b: Vector3) -> void:
 	var container := Node3D.new()
 	container.name = "Visual"
 
-	var mi := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius    = 0.008
-	cyl.bottom_radius = 0.008
-	cyl.height        = 3.0
-	mi.mesh = cyl
-	mi.basis = _axis_basis(slider.axis)
-	# Center the line on body B in the slider's local space.
-	mi.position = slider.to_local(pos_b)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1, 1, 1)
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mi.material_override = mat
+	var local_a := slider.to_local(pos_a)
+	var local_b := slider.to_local(pos_b)
+	var diff    := local_a - local_b
+	var length  := diff.length()
 
-	container.add_child(mi)
+	if length > 0.01:
+		var mi := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius    = 0.008
+		cyl.bottom_radius = 0.008
+		cyl.height        = length
+		mi.mesh = cyl
+		mi.basis     = _axis_basis(diff)
+		mi.position  = (local_a + local_b) * 0.5
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1, 1, 1)
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = mat
+		container.add_child(mi)
+
 	slider.add_child(container)
 	container.visible = _show_joints
 
@@ -1173,7 +1178,7 @@ func _load_scene(path: String) -> void:
 				_sim.add_child(slider)
 				slider.body_a_path = slider.get_path_to(body_a)
 				slider.body_b_path = slider.get_path_to(body_b)
-				_attach_slider_visual(slider, body_b.position)
+				_attach_slider_visual(slider, body_a.position, body_b.position)
 
 			"spring":
 				var spring := SkaleSpring.new()
