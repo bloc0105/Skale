@@ -708,6 +708,7 @@ func _create_hinge(body_a: SkaleBody, body_b: SkaleBody) -> void:
 	_sim.add_child(hinge)
 	hinge.body_a_path = hinge.get_path_to(body_a)
 	hinge.body_b_path = hinge.get_path_to(body_b)
+	hinge.set_meta("anchor_offset", anchor - body_a.position)
 
 	_attach_hinge_visual(hinge, body_b.position)
 	_select(body_b)
@@ -754,8 +755,9 @@ func _update_hinge_visuals() -> void:
 		var hinge := _sim.get_child(i) as SkaleHinge
 		if not hinge:
 			continue
+		var node_a := hinge.get_node_or_null(hinge.body_a_path) as SkaleBody
 		var node_b := hinge.get_node_or_null(hinge.body_b_path) as SkaleBody
-		if not node_b:
+		if not node_a or not node_b:
 			continue
 		var container := hinge.get_node_or_null("Visual") as Node3D
 		if not container:
@@ -763,6 +765,9 @@ func _update_hinge_visuals() -> void:
 		var mi := container.get_node_or_null("Circle") as MeshInstance3D
 		if not mi:
 			continue
+		if hinge.has_meta("anchor_offset"):
+			hinge.global_position = node_a.global_position + \
+				(hinge.get_meta("anchor_offset") as Vector3)
 		_build_hinge_circle(mi, hinge, node_b.global_position)
 
 
@@ -1201,6 +1206,7 @@ func _load_scene(path: String) -> void:
 				_sim.add_child(hinge)
 				hinge.body_a_path = hinge.get_path_to(body_a)
 				hinge.body_b_path = hinge.get_path_to(body_b)
+				hinge.set_meta("anchor_offset", hinge.anchor - body_a.position)
 				_attach_hinge_visual(hinge, body_b.position)
 
 			"slider":
