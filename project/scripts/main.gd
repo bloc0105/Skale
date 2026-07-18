@@ -917,25 +917,19 @@ func _attach_slider_visual(slider: SkaleSlider, pos_a: Vector3, pos_b: Vector3) 
 	var container := Node3D.new()
 	container.name = "Visual"
 
-	var local_a := slider.to_local(pos_a)
-	var local_b := slider.to_local(pos_b)
-	var diff    := local_a - local_b
-	var length  := diff.length()
-
-	if length > 0.01:
-		var mi := MeshInstance3D.new()
-		var cyl := CylinderMesh.new()
-		cyl.top_radius    = 0.008
-		cyl.bottom_radius = 0.008
-		cyl.height        = length
-		mi.mesh = cyl
-		mi.basis     = _axis_basis(diff)
-		mi.position  = (local_a + local_b) * 0.5
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(1, 1, 1)
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mi.material_override = mat
-		container.add_child(mi)
+	var mi := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius    = 0.008
+	cyl.bottom_radius = 0.008
+	cyl.height        = 3.0
+	mi.mesh = cyl
+	mi.basis    = _axis_basis(slider.axis)
+	mi.position = slider.to_local(pos_b)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(1, 1, 1)
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.material_override = mat
+	container.add_child(mi)
 
 	slider.add_child(container)
 	container.visible = _show_joints
@@ -1286,9 +1280,8 @@ func _update_slider_visuals() -> void:
 		var slider := _sim.get_child(i) as SkaleSlider
 		if not slider:
 			continue
-		var node_a := slider.get_node_or_null(slider.body_a_path) as SkaleBody
 		var node_b := slider.get_node_or_null(slider.body_b_path) as SkaleBody
-		if not node_a or not node_b:
+		if not node_b:
 			continue
 		var container := slider.get_node_or_null("Visual") as Node3D
 		if not container or container.get_child_count() == 0:
@@ -1296,18 +1289,8 @@ func _update_slider_visuals() -> void:
 		var mi := container.get_child(0) as MeshInstance3D
 		if not mi:
 			continue
-		var pt_a := node_a.global_position
-		var pt_b := node_b.global_position
-		var diff := pt_a - pt_b
-		var length := diff.length()
-		if length < 0.01:
-			continue
-		slider.global_position = (pt_a + pt_b) * 0.5
-		var cyl := mi.mesh as CylinderMesh
-		if cyl:
-			cyl.height = length
-		mi.position = Vector3.ZERO
-		mi.global_basis = _axis_basis(diff)
+		mi.global_position = node_b.global_position
+		mi.global_basis    = _axis_basis(slider.axis)
 
 
 func _update_spring_visuals() -> void:
